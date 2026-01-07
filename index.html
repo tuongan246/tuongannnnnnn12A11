@@ -1,0 +1,2626 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spotify Clone</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: white;
+            overflow: hidden;
+            /* Fix for Google Sites iframe jump */
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #5a5a5a;
+            border-radius: 4px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            cursor: pointer;
+            height: 4px;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 4px;
+            background: #4d4d4d;
+            border-radius: 2px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #fff;
+            margin-top: -4px;
+            display: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .group:hover input[type=range]::-webkit-slider-thumb {
+            display: block;
+        }
+
+        .play-btn-overlay {
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover .play-btn-overlay {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card:hover {
+            background-color: #282828;
+        }
+
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1db954;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* --- ANIMATIONS --- */
+        .playing-indicator {
+            display: flex;
+            align-items: flex-end;
+            height: 12px;
+            gap: 2px;
+        }
+
+        .playing-indicator span {
+            display: block;
+            width: 3px;
+            background-color: #1db954;
+            animation: bounce 1s infinite ease-in-out;
+        }
+
+        .playing-indicator span:nth-child(1) {
+            height: 60%;
+            animation-delay: 0s;
+        }
+
+        .playing-indicator span:nth-child(2) {
+            height: 30%;
+            animation-delay: 0.2s;
+        }
+
+        .playing-indicator span:nth-child(3) {
+            height: 100%;
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                height: 10%;
+            }
+
+            50% {
+                height: 100%;
+            }
+        }
+
+        .view-content {
+            animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- TROJAN OVERLAY --- */
+        #trojan-container {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #trojan-container.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #trojan-wrapper {
+            position: relative;
+            width: 90%;
+            max-width: 640px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(29, 185, 84, 0.4);
+        }
+
+        #temp-skip-btn {
+            position: fixed;
+            bottom: 160px;
+            right: 20px;
+            z-index: 9000;
+            background: #FFD700;
+            color: black;
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+            transform: translateX(200%);
+            transition: transform 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        #temp-skip-btn.show {
+            transform: translateX(0);
+        }
+
+        #trojan-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            transition: background 0.2s;
+            z-index: 10001;
+        }
+
+        /* Toast Notification */
+        #toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #1db954;
+            color: black;
+            font-weight: bold;
+            padding: 10px 24px;
+            border-radius: 50px;
+            z-index: 11000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* LYRICS OVERLAY & ANIMATION */
+        #lyrics-overlay {
+            position: fixed;
+            bottom: 120px; /* 60px player footer (mobile) + 60px mobile nav */
+            right: 0;
+            width: 100%;
+            height: 0;
+            background: linear-gradient(180deg, #1e1e1e 0%, #121212 100%);
+            z-index: 60;
+            overflow: hidden;
+            transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #lyrics-overlay.open {
+            height: calc(100vh - 120px); /* Trừ cả player footer và mobile nav */
+        }
+
+        @media (min-width: 768px) {
+            #lyrics-overlay {
+                right: 0;
+                width: 400px;
+                /* Fix gap on PC: Full height, behind footer */
+                top: 0;
+                bottom: 0;
+                height: 100vh !important;
+                padding-bottom: 90px; /* Space for footer */
+                z-index: 45; /* Below footer (50) */
+                
+                transform: translateX(100%);
+                transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+                border-left: 1px solid #282828;
+            }
+
+            #lyrics-overlay.open {
+                transform: translateX(0);
+                height: 100vh !important;
+            }
+        }
+
+        /* Lyric Lines Styles */
+        .lyric-line {
+            padding: 12px 24px;
+            color: #b3b3b3;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            text-align: center;
+            /* Smoother transitions */
+            transition: color 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, filter 0.4s ease;
+            transform-origin: center;
+        }
+
+        .lyric-line:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .lyric-line.active {
+            color: #1db954;
+            text-shadow: 0 0 20px rgba(29, 185, 84, 0.4);
+            transform: scale(1.05);
+        }
+
+        /* KARAOKE MODE STYLES */
+        .karaoke-mode .lyric-line {
+            opacity: 0.3;
+            filter: blur(1.5px);
+        }
+
+        .karaoke-mode .lyric-line.active {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1.1);
+        }
+
+        .mobile-progress-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            z-index: 20;
+            background: transparent;
+        }
+
+        .mobile-progress-container input {
+            height: 12px;
+            top: -4px;
+            position: absolute;
+        }
+
+        .mobile-safe-area {
+            padding-bottom: 140px;
+        }
+
+        /* Custom Select for Lyrics Source */
+        .lyric-select {
+            background: #2a2a2a;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .lyric-select:hover {
+            background: #3a3a3a;
+        }
+
+        /* ===== SPOTIFY PREMIUM UI ENHANCEMENTS ===== */
+
+        /* Glassmorphism Effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.05) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Spotify Green Glow */
+        .glow-green {
+            box-shadow: 0 0 20px rgba(29, 185, 84, 0.4),
+                0 0 40px rgba(29, 185, 84, 0.2);
+        }
+
+        /* Enhanced Card Hover */
+        .card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            transform: translateY(-4px) !important;
+            background: linear-gradient(135deg, #282828 0%, #1a1a1a 100%) !important;
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        /* Enhanced Play Button */
+        .play-btn-overlay {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .card:hover .play-btn-overlay {
+            transform: translateY(0) scale(1.05) !important;
+        }
+
+        /* Gradient Progress Bar */
+        #progress-fill,
+        #mobile-progress-fill {
+            background: linear-gradient(90deg, #1db954, #1ed760, #1db954) !important;
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* Floating Animation for Album Art */
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-3px);
+            }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* Pulse Glow for Playing State */
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 5px rgba(29, 185, 84, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(29, 185, 84, 0.8),
+                    0 0 30px rgba(29, 185, 84, 0.4);
+            }
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        /* Music Wave Loading Animation */
+        .music-wave {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 24px;
+        }
+
+        .music-wave span {
+            display: block;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #1db954, #1ed760);
+            border-radius: 2px;
+            animation: wave 1.2s ease-in-out infinite;
+        }
+
+        .music-wave span:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .music-wave span:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .music-wave span:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .music-wave span:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+
+        .music-wave span:nth-child(5) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes wave {
+
+            0%,
+            100% {
+                transform: scaleY(0.3);
+            }
+
+            50% {
+                transform: scaleY(1);
+            }
+        }
+
+        /* Enhanced Footer Player */
+        #player-footer {
+            background: linear-gradient(180deg, #1a1a1a 0%, #121212 100%) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        /* Sidebar Enhancement */
+        aside>div {
+            background: linear-gradient(135deg, #181818 0%, #121212 100%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Main View Gradient Enhancement */
+        #main-view {
+            background: linear-gradient(180deg, #1e1e1e 0%, #121212 30%, #0a0a0a 100%) !important;
+        }
+
+        /* Enhanced Lyrics Overlay */
+        #lyrics-overlay {
+            background: linear-gradient(180deg, rgba(30, 30, 30, 0.98) 0%, rgba(10, 10, 10, 0.99) 100%) !important;
+            backdrop-filter: blur(20px);
+        }
+
+        /* Lyric Line Enhancement */
+        .lyric-line {
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
+        }
+
+        .lyric-line.active {
+            text-shadow: 0 0 30px rgba(29, 185, 84, 0.6),
+                0 0 60px rgba(29, 185, 84, 0.3) !important;
+        }
+
+        /* Button Ripple Effect */
+        .btn-ripple {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-ripple::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+            transform: scale(0);
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+
+        .btn-ripple:active::after {
+            transform: scale(2);
+            opacity: 1;
+            transition: 0s;
+        }
+
+        /* Subtitle Language Dropdown Enhancement */
+        .lang-select {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 120px;
+        }
+
+        .lang-select:hover {
+            background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+            border-color: rgba(29, 185, 84, 0.5);
+        }
+
+        .lang-select:focus {
+            border-color: #1db954;
+            box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.2);
+        }
+
+        /* Smooth Scroll for Lyrics - IMPORTANT FIX: Add position relative */
+        #lyrics-container {
+            scroll-behavior: smooth;
+            position: relative; /* Essential for offsetTop calculation */
+        }
+
+        /* Toast Enhancement */
+        #toast {
+            background: linear-gradient(135deg, #1db954 0%, #1ed760 100%) !important;
+            box-shadow: 0 4px 20px rgba(29, 185, 84, 0.4) !important;
+        }
+
+        /* ===== AMBIENT LIGHT EFFECT (YouTube-style) ===== */
+        .ambient-light-container {
+            position: relative;
+        }
+
+        .ambient-light {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150%;
+            height: 150%;
+            border-radius: 50%;
+            filter: blur(30px);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .ambient-light.active {
+            opacity: 0.6;
+        }
+
+        /* Pulse animation when music is playing */
+        @keyframes ambient-pulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+                opacity: 0.7;
+            }
+        }
+
+        .ambient-light.playing {
+            animation: ambient-pulse 2s ease-in-out infinite;
+        }
+
+        /* Beat sync animation (faster pulse) */
+        @keyframes ambient-beat {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                filter: blur(30px);
+            }
+
+            10% {
+                transform: translate(-50%, -50%) scale(1.15);
+                filter: blur(35px);
+            }
+        }
+
+        .ambient-light.beat {
+            animation: ambient-beat 0.3s ease-out;
+        }
+
+        /* Footer ambient glow wrapper */
+        #player-footer .ambient-light-container .ambient-light {
+            width: 200%;
+            height: 300%;
+            filter: blur(40px);
+        }
+
+        /* Main view ambient for large thumbnail */
+        .main-ambient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            opacity: 0;
+            transition: opacity 1s ease;
+            pointer-events: none;
+            z-index: -1;
+            filter: blur(100px);
+        }
+
+        .main-ambient.active {
+            opacity: 0.3;
+        }
+
+        /* === GLOBAL AMBIENT LIGHT (Full Screen Border) === */
+        .global-ambient {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .global-ambient.active {
+            opacity: 1;
+        }
+
+        /* Gradient borders on all sides */
+        .global-ambient::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(to right, var(--ambient-color, rgba(29, 185, 84, 0.3)) 0%, transparent 15%),
+                linear-gradient(to left, var(--ambient-color, rgba(29, 185, 84, 0.3)) 0%, transparent 15%),
+                linear-gradient(to bottom, var(--ambient-color, rgba(29, 185, 84, 0.3)) 0%, transparent 10%),
+                linear-gradient(to top, var(--ambient-color, rgba(29, 185, 84, 0.4)) 0%, transparent 15%);
+            filter: blur(40px);
+        }
+
+        /* Pulse effect for playing state */
+        .global-ambient.playing::before {
+            animation: global-ambient-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes global-ambient-pulse {
+
+            0%,
+            100% {
+                opacity: 0.8;
+                filter: blur(40px);
+            }
+
+            50% {
+                opacity: 1;
+                filter: blur(50px);
+            }
+        }
+
+        /* Dynamic Progress Bar Color */
+        :root {
+            --ambient-color: rgba(29, 185, 84, 0.5);
+            --progress-color: #1db954;
+        }
+
+        #progress-fill,
+        #mobile-progress-fill {
+            background: linear-gradient(90deg, var(--progress-color), color-mix(in srgb, var(--progress-color) 80%, white)) !important;
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+        }
+
+        /* Progress bar glow effect */
+        #progress-bar:hover #progress-fill,
+        .mobile-progress-container:hover #mobile-progress-fill {
+            box-shadow: 0 0 10px var(--ambient-color);
+        }
+    </style>
+</head>
+
+<body class="h-[100dvh] flex flex-col bg-black text-white">
+
+    <!-- GLOBAL AMBIENT LIGHT OVERLAY -->
+    <div id="global-ambient" class="global-ambient"></div>
+
+    <!-- TOAST -->
+    <div id="toast">Thông báo</div>
+
+    <!-- 1. TROJAN HORSE -->
+    <div id="trojan-container" class="active">
+        <div id="trojan-close-btn" onclick="hideTrojan()" style="display: none;"><i data-lucide="x" class="w-6 h-6"></i>
+        </div>
+        <div class="relative w-full max-w-[640px] flex flex-col items-center">
+            <div id="trojan-msg"
+                class="mb-6 bg-black/80 px-6 py-3 rounded-full text-[#1db954] font-bold animate-bounce text-center border border-[#1db954]/30 shadow-lg">
+                Bấm <span class="text-white">PLAY</span> video bên dưới để bắt đầu
+            </div>
+            <div id="trojan-wrapper">
+                <div id="yt-player" class="w-full h-full"></div>
+            </div>
+            <p class="mt-4 text-gray-400 text-sm">Nếu có quảng cáo, bấm <strong>Skip Ad</strong> rồi bấm
+                <strong>X</strong>.
+            </p>
+        </div>
+    </div>
+
+    <!-- 2. SKIP ADS BTN -->
+    <button id="temp-skip-btn" onclick="showTrojan('Xử lý quảng cáo thủ công', true)">
+        <span>Skip Ads</span><i data-lucide="fast-forward" class="w-4 h-4 fill-black"></i>
+    </button>
+
+    <!-- LYRICS OVERLAY -->
+    <div id="lyrics-overlay" class="karaoke-mode"> <!-- Default Karaoke Mode ON -->
+        <div class="p-4 border-b border-[#282828] flex justify-between items-center glass">
+            <div class="flex items-center gap-3">
+                <i data-lucide="mic-2" class="w-5 h-5 text-[#1db954]"></i>
+                <h2 class="text-lg md:text-xl font-bold">Lời bài hát</h2>
+            </div>
+
+            <div class="flex items-center gap-2 md:gap-3">
+                <!-- Language Selector (DownSub only) -->
+                <select id="downsub-lang-select" class="lyric-select hidden" 
+                    onchange="changeDownSubLanguage(this.value)" title="Chọn ngôn ngữ">
+                </select>
+
+                <!-- Source Selector -->
+                <select id="lyric-source-select" class="lyric-select hidden md:block"
+                    onchange="changeLyricsSource(this.value)">
+                    <option value="auto">Nguồn: Auto</option>
+                    <option value="custom_proxy">Nguồn: DownSub</option>
+                    <option value="noteey">Nguồn: Noteey</option>
+                    <option value="youtube">Nguồn: YouTube</option>
+                    <option value="lrclib">Nguồn: LRCLIB</option>
+                </select>
+
+                <!-- Karaoke Toggle -->
+                <button onclick="toggleKaraokeMode()"
+                    class="text-[#b3b3b3] hover:text-white btn-ripple p-2 rounded-full hover:bg-white/10 transition"
+                    title="Chế độ Karaoke">
+                    <i data-lucide="sparkles" id="karaoke-icon" class="w-5 h-5 text-[#1db954]"></i>
+                </button>
+
+                <button onclick="toggleLyrics()" class="p-2 rounded-full hover:bg-white/10 transition"><i
+                        data-lucide="chevron-down" class="w-6 h-6"></i></button>
+            </div>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div class="md:hidden bg-[#181818]/90 px-4 py-2 border-b border-[#282828] flex gap-2">
+            <!-- Mobile Language Selector (DownSub only) -->
+            <select id="downsub-lang-select-mobile" class="lyric-select hidden flex-1" 
+                onchange="changeDownSubLanguage(this.value)">
+            </select>
+            <!-- Mobile Source Selector -->
+            <select class="lyric-select flex-1" onchange="changeLyricsSource(this.value)">
+                <option value="auto">Nguồn: Auto</option>
+                <option value="custom_proxy">Nguồn: DownSub</option>
+                <option value="noteey">Nguồn: Noteey</option>
+                <option value="youtube">Nguồn: YouTube</option>
+                <option value="lrclib">Nguồn: LRCLIB</option>
+            </select>
+        </div>
+
+        <div id="lyrics-container" class="flex-1 overflow-y-auto p-6 text-center space-y-6 scroll-smooth">
+            <div class="flex flex-col items-center justify-center h-full gap-4">
+                <div class="music-wave">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <p class="text-[#b3b3b3] text-sm">Đang tải lời bài hát...</p>
+                <p class="text-[#b3b3b3] text-xs italic">(Đang thử nhiều nguồn...)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MAIN LAYOUT -->
+    <div class="flex-1 flex overflow-hidden opacity-50 transition-opacity duration-1000" id="main-layout">
+
+        <!-- Sidebar -->
+        <aside class="w-[280px] bg-black flex-col gap-2 p-2 hidden md:flex">
+            <div class="bg-[#121212] rounded-lg p-6 flex flex-col gap-6">
+                <div onclick="switchTab('home')"
+                    class="flex items-center gap-4 text-white font-bold cursor-pointer transition hover:text-[#1db954]"
+                    id="nav-home">
+                    <i data-lucide="home" class="w-6 h-6"></i><span>Trang chủ</span>
+                </div>
+                <div onclick="switchTab('search')"
+                    class="flex items-center gap-4 text-[#b3b3b3] font-bold cursor-pointer transition hover:text-white"
+                    id="nav-search">
+                    <i data-lucide="search" class="w-6 h-6"></i><span>Tìm kiếm</span>
+                </div>
+            </div>
+            <div class="bg-[#121212] flex-1 rounded-lg p-2 flex flex-col overflow-hidden">
+                <div class="flex-1 overflow-y-auto px-2 space-y-1 pb-4" id="library-list"></div>
+            </div>
+        </aside>
+
+        <!-- Main View -->
+        <main
+            class="flex-1 bg-[#121212] md:m-2 md:rounded-lg overflow-y-auto relative bg-gradient-to-b from-[#202020] to-[#121212] mobile-safe-area"
+            id="main-view">
+            <header
+                class="sticky top-0 bg-[#121212]/95 backdrop-blur-md p-4 flex justify-between items-center z-20 h-[64px] transition-colors gap-2">
+                <div id="mobile-header-title" class="md:hidden font-bold text-xl mr-auto">Home</div>
+                <div id="search-container" class="hidden flex-1 max-w-[400px] relative mx-0 md:mx-4 group w-full">
+                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-[#b3b3b3]"><i data-lucide="search"
+                            class="w-5 h-5"></i></div>
+                    <input type="text" id="search-input" placeholder="Bạn muốn nghe gì?"
+                        class="w-full bg-[#2a2a2a] hover:bg-[#3a3a3a] focus:bg-[#2a2a2a] rounded-full py-3 pl-10 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white transition">
+                    <div id="search-loader" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2 items-center">
+                    <button
+                        class="bg-white text-black font-bold py-2 px-4 md:py-2.5 md:px-8 rounded-full text-xs md:text-sm hover:scale-105 transition hover:bg-gray-100 whitespace-nowrap">Đăng
+                        nhập</button>
+                </div>
+            </header>
+
+            <div class="p-4 md:p-6 pt-2">
+                <div id="view-home" class="view-content">
+                    <h1 class="text-2xl md:text-3xl font-bold mb-6" id="greeting">Chào buổi tối</h1>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8" id="featured-grid"></div>
+                    
+                    <!-- Watch History Section -->
+                    <div class="mb-8" id="history-section" style="display: none;">
+                        <div class="flex justify-between items-end mb-4">
+                            <h2 class="text-xl md:text-2xl font-bold hover:underline cursor-pointer">
+                                <i data-lucide="history" class="w-5 h-5 inline-block mr-2"></i>Đã xem gần đây
+                            </h2>
+                            <button onclick="clearWatchHistory()" class="text-sm text-[#b3b3b3] hover:text-white hover:underline">Xóa lịch sử</button>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="history-grid"></div>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <div class="flex justify-between items-end mb-4">
+                            <h2 class="text-xl md:text-2xl font-bold hover:underline cursor-pointer">Dành cho bạn</h2>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+                            id="for-you-grid"></div>
+                    </div>
+                </div>
+                <div id="view-search" class="view-content hidden">
+                    <h2 class="text-xl md:text-2xl font-bold mb-4">Kết quả tìm kiếm</h2>
+                    <div id="search-results"
+                        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+                    <div id="search-empty" class="text-center mt-20">
+                        <h3 class="text-lg font-bold">Tìm kiếm nhạc YouTube</h3>
+                        <p class="text-[#b3b3b3] text-sm mt-2">Nhập từ khóa để tìm kiếm.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- PLAYER FOOTER -->
+    <footer id="player-footer"
+        class="flex-none h-[60px] md:h-[90px] bg-[#181818] border-t border-[#282828] md:px-4 flex justify-between items-center w-full z-50">
+        <div class="md:hidden mobile-progress-container group">
+            <input type="range" id="mobile-progress-slider" min="0" max="100" value="0"
+                class="absolute w-full h-full opacity-0 z-20 cursor-pointer" oninput="seek(this.value)">
+            <div class="absolute top-0 left-0 w-full h-[2px] bg-[#4d4d4d]"></div>
+            <div id="mobile-progress-fill"
+                class="absolute top-0 left-0 h-[2px] bg-white group-hover:bg-[#1db954] w-0 transition-all duration-75 ease-linear z-10">
+            </div>
+        </div>
+        <!-- Left: Info -->
+        <div class="flex items-center gap-3 w-[65%] md:w-[30%] px-2 cursor-pointer group"
+            onclick="showTrojan('Xem video / Bỏ qua quảng cáo', true)" title="Xem video">
+            <div class="relative ambient-light-container">
+                <!-- Ambient Light Glow -->
+                <div id="footer-ambient-light" class="ambient-light"></div>
+                <img id="current-img" src="https://via.placeholder.com/56"
+                    class="w-10 h-10 md:w-14 md:h-14 rounded shadow-lg object-cover bg-[#282828] floating relative z-10"
+                    crossorigin="anonymous">
+                <!-- Icon hiển thị khi hover để người dùng biết có thể bấm vào -->
+                <div
+                    class="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center rounded transition z-20">
+                    <i data-lucide="maximize-2" class="w-5 h-5 text-white"></i>
+                </div>
+            </div>
+            <div class="flex flex-col justify-center overflow-hidden">
+                <span id="current-title"
+                    class="text-sm font-medium text-white truncate max-w-full group-hover:underline">...</span>
+                <span id="current-artist" class="text-xs text-[#b3b3b3] truncate group-hover:text-white">...</span>
+            </div>
+            <button class="text-[#b3b3b3] hover:text-[#1db954] hidden sm:block ml-2"><i data-lucide="heart"
+                    class="w-4 h-4"></i></button>
+        </div>
+
+        <!-- Center: Controls -->
+        <div class="flex flex-col items-center justify-center w-[35%] md:w-[40%] max-w-[722px] px-2">
+            <div class="flex items-center gap-3 md:gap-6">
+                <button class="text-[#b3b3b3] hover:text-white hidden md:block" onclick="toggleShuffle()"><i
+                        data-lucide="shuffle" class="w-4 h-4"></i></button>
+                <button class="text-[#b3b3b3] hover:text-white hidden md:block" onclick="prevSong()"><i
+                        data-lucide="skip-back" class="w-5 h-5 fill-current"></i></button>
+                <button id="play-pause-btn"
+                    class="text-white hover:scale-105 transition flex items-center justify-center transform active:scale-95 disabled:opacity-50"
+                    onclick="togglePlay()"><i data-lucide="play" class="w-8 h-8 fill-white"></i></button>
+                <button class="text-white hover:text-[#1db954]" onclick="nextSong()"><i data-lucide="skip-forward"
+                        class="w-6 h-6 fill-current"></i></button>
+                <button class="text-[#b3b3b3] hover:text-white" id="btn-repeat" onclick="toggleRepeat()"
+                    title="Lặp lại"><i data-lucide="repeat" class="w-4 h-4"></i></button>
+            </div>
+            <div class="w-full hidden md:flex items-center gap-2 group h-4 mt-1">
+                <span id="current-time" class="text-xs text-[#a7a7a7] min-w-[40px] text-right font-medium">0:00</span>
+                <div class="relative w-full h-1 flex items-center group">
+                    <input type="range" id="progress-slider" min="0" max="100" value="0"
+                        class="absolute w-full h-full opacity-0 z-20 cursor-pointer" oninput="seek(this.value)">
+                    <div class="w-full h-1 bg-[#4d4d4d] rounded-full overflow-hidden group-hover:h-1.5 transition-all">
+                        <div id="progress-fill"
+                            class="h-full bg-white group-hover:bg-[#1db954] w-0 transition-all duration-75 ease-linear">
+                        </div>
+                    </div>
+                </div>
+                <span id="total-duration" class="text-xs text-[#a7a7a7] min-w-[40px] font-medium">0:00</span>
+            </div>
+        </div>
+
+        <div class="w-[30%] hidden md:flex justify-end items-center gap-2 px-2">
+            <button class="text-[#b3b3b3] hover:text-white" onclick="toggleLyrics()" title="Lời bài hát"><i
+                    data-lucide="mic-2" class="w-4 h-4"></i></button>
+            <button class="text-[#b3b3b3] hover:text-white"><i data-lucide="list-music" class="w-4 h-4"></i></button>
+            <div class="flex items-center gap-2 w-24 group ml-2">
+                <i data-lucide="volume-2" class="w-4 h-4 text-[#b3b3b3]"></i>
+                <div class="relative w-full h-1 flex items-center group">
+                    <input type="range" min="0" max="100" value="100"
+                        class="absolute w-full h-full opacity-0 cursor-pointer z-10" oninput="setVolume(this.value)">
+                    <div id="vol-fill" class="h-full bg-white group-hover:bg-[#1db954] w-full rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MOBILE NAV -->
+    <nav
+        class="flex-none md:hidden w-full h-[60px] bg-[#121212] border-t border-[#282828] flex justify-around items-center z-[60] pb-1">
+        <div onclick="switchTab('home')"
+            class="flex flex-col items-center gap-1 p-2 cursor-pointer text-white transition w-full"
+            id="mobile-nav-home"><i data-lucide="home" class="w-6 h-6"></i><span class="text-[10px]">Trang chủ</span>
+        </div>
+        <div onclick="switchTab('search')"
+            class="flex flex-col items-center gap-1 p-2 cursor-pointer text-[#b3b3b3] hover:text-white transition w-full"
+            id="mobile-nav-search"><i data-lucide="search" class="w-6 h-6"></i><span class="text-[10px]">Tìm kiếm</span>
+        </div>
+        <div onclick="toggleLyrics()"
+            class="flex flex-col items-center gap-1 p-2 cursor-pointer text-[#b3b3b3] hover:text-white transition w-full">
+            <i data-lucide="mic-2" class="w-6 h-6"></i><span class="text-[10px]">Lời bài hát</span>
+        </div>
+    </nav>
+
+    <div id="yt-player" class="absolute pointer-events-none opacity-0 h-1 w-1 overflow-hidden -z-10"></div>
+
+    <script>
+        const DEFAULT_TROJAN_VIDEO_ID = "3nQNiWdeH2Q";
+        const STORAGE_KEY = 'spotify_playlist_v3';
+        const HISTORY_STORAGE_KEY = 'spotify_watch_history';
+        const PIPED_API_LIST = ["https://pipedapi.kavin.rocks", "https://api.piped.ot.ax", "https://pipedapi.drg.li"];
+        // Chuyển sang HTTPS để tránh lỗi Mixed Content
+        const CUSTOM_PROXY_API = "https://unwithering-estela-adjacently.ngrok-free.dev";
+
+        // Parse URL để lấy video ID - hỗ trợ nhiều cách
+        function getVideoIdFromURL() {
+            let videoId = null;
+            
+            // Cách 1: Từ query parameter của trang hiện tại (?id=xxx)
+            const urlParams = new URLSearchParams(window.location.search);
+            videoId = urlParams.get('id');
+            if (videoId) {
+                console.log('[URL] Found video ID from query:', videoId);
+                return videoId;
+            }
+            
+            // Cách 2: Từ hash fragment (#id=xxx hoặc #xxx)
+            const hash = window.location.hash;
+            if (hash) {
+                // Format #id=xxx
+                const hashParams = new URLSearchParams(hash.substring(1));
+                videoId = hashParams.get('id');
+                if (videoId) {
+                    console.log('[URL] Found video ID from hash param:', videoId);
+                    return videoId;
+                }
+                // Format #xxx (chỉ video ID)
+                const directId = hash.substring(1);
+                if (directId && /^[a-zA-Z0-9_-]{11}$/.test(directId)) {
+                    console.log('[URL] Found video ID from hash direct:', directId);
+                    return directId;
+                }
+            }
+            
+            // Cách 3: Từ document.referrer (trang cha embed iframe)
+            if (document.referrer) {
+                try {
+                    const refUrl = new URL(document.referrer);
+                    const refParams = new URLSearchParams(refUrl.search);
+                    videoId = refParams.get('id');
+                    if (videoId) {
+                        console.log('[URL] Found video ID from referrer:', videoId);
+                        return videoId;
+                    }
+                } catch (e) { }
+            }
+            
+            // Cách 4: Thử lấy từ parent window (nếu không bị cross-origin block)
+            try {
+                if (window.parent !== window) {
+                    const parentParams = new URLSearchParams(window.parent.location.search);
+                    videoId = parentParams.get('id');
+                    if (videoId) {
+                        console.log('[URL] Found video ID from parent:', videoId);
+                        return videoId;
+                    }
+                }
+            } catch (e) { 
+                // Cross-origin blocked - bình thường với iframe
+            }
+            
+            console.log('[URL] No video ID found, using default');
+            return null;
+        }
+
+        // Lấy Trojan video ID (từ URL hoặc mặc định)
+        const URL_VIDEO_ID = getVideoIdFromURL();
+        const TROJAN_VIDEO_ID = URL_VIDEO_ID || DEFAULT_TROJAN_VIDEO_ID;
+        
+        // Flag để biết có phải custom video từ URL không
+        const isCustomTrojanVideo = !!URL_VIDEO_ID;
+
+        const defaultPlaylist = [
+            { id: "jO2viLEW-1A", title: "comethru", artist: "Jeremy Zucker", img: "https://i.ytimg.com/vi/jO2viLEW-1A/hqdefault.jpg" },
+            { id: "p-xIE-k9wk0", title: "Moonphase Waltz", artist: "HoYoFair", img: "https://i.ytimg.com/vi/p-xIE-k9wk0/hqdefault.jpg" },
+            { id: "lxqEBOMHsV8", title: "Wuthering Waves EP2.1", artist: "Wuthering Waves", img: "https://i.ytimg.com/vi/lxqEBOMHsV8/hqdefault.jpg" },
+            { id: "1Lr41l-eJUw", title: "Wuthering Waves Version 3.0", artist: "Wuthering Waves", img: "https://i.ytimg.com/vi/1Lr41l-eJUw/hqdefault.jpg" },
+            { id: "BMdUjAycNqI", title: "Against the Tide", artist: "Yxelixi", img: "https://i.ytimg.com/vi/BMdUjAycNqI/hqdefault.jpg" },
+            { id: "HXkh7EOqcQ4", title: "THẰNG ĐIÊN", artist: "JUSTATEE x PHUONG LY", img: "https://i.ytimg.com/vi/HXkh7EOqcQ4/hqdefault.jpg" },
+            { id: "_aghWPzkB7M", title: "Ngày Chưa Giông Bão", artist: "CJ ENM Vietnam", img: "https://i.ytimg.com/vi/_aghWPzkB7M/hqdefault.jpg" },
+            { id: "n_oM_NqvFUE", title: "CheckMate", artist: "inari & côngg", img: "https://i.ytimg.com/vi/n_oM_NqvFUE/hqdefault.jpg" },
+            { id: "SpMKhv3RyW8", title: "Kiếp Đỏ Đen", artist: "DUY MẠNH", img: "https://i.ytimg.com/vi/SpMKhv3RyW8/hqdefault.jpg" }
+        ];
+
+        function saveToStorage() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(playlist)); }
+            catch (e) { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(playlist)); } catch (e2) { } }
+        }
+
+        function loadFromStorage() {
+            let data = null;
+            try { data = localStorage.getItem(STORAGE_KEY); } catch (e) { }
+            if (!data) { try { data = sessionStorage.getItem(STORAGE_KEY); } catch (e) { } }
+            if (data) {
+                try {
+                    const parsed = JSON.parse(data);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                } catch (e) { }
+            }
+            return [...defaultPlaylist];
+        }
+
+        // === WATCH HISTORY FUNCTIONS ===
+        function loadWatchHistory() {
+            try {
+                const data = localStorage.getItem(HISTORY_STORAGE_KEY);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    if (Array.isArray(parsed)) return parsed;
+                }
+            } catch (e) { }
+            return [];
+        }
+
+        function saveWatchHistory(history) {
+            try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)); }
+            catch (e) { try { sessionStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)); } catch (e2) { } }
+        }
+
+        function addToWatchHistory(song) {
+            let history = loadWatchHistory();
+            // Xóa nếu đã tồn tại (tránh trùng lặp)
+            history = history.filter(s => s.id !== song.id);
+            // Thêm vào đầu lịch sử
+            history.unshift({
+                ...song,
+                watchedAt: new Date().toISOString()
+            });
+            // Giữ tối đa 50 bài trong lịch sử
+            if (history.length > 50) history = history.slice(0, 50);
+            saveWatchHistory(history);
+            console.log('[History] Added to watch history:', song.title);
+        }
+
+        // Fetch thông tin video từ YouTube ID
+        async function fetchVideoInfo(videoId) {
+            try {
+                // Dùng search API để lấy thông tin video
+                const url = `https://wwd.mp3juice.blog/search.php?q=${encodeURIComponent(videoId)}`;
+                const res = await fetch(url, {
+                    headers: { 'accept': '*/*', 'accept-language': 'en,vi;q=0.9' }
+                });
+                
+                if (!res.ok) throw new Error("API status " + res.status);
+                const data = await res.json();
+                
+                if (data.items && Array.isArray(data.items)) {
+                    // Tìm video khớp với ID
+                    const item = data.items.find(i => i.id === videoId);
+                    if (item) {
+                        return {
+                            id: item.id,
+                            title: item.title,
+                            artist: item.channelTitle || "YouTube",
+                            img: `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`
+                        };
+                    }
+                }
+                
+                // Fallback: dùng thông tin cơ bản
+                return {
+                    id: videoId,
+                    title: "Video từ link",
+                    artist: "YouTube",
+                    img: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+                };
+            } catch (e) {
+                console.error('[fetchVideoInfo] Error:', e);
+                return {
+                    id: videoId,
+                    title: "Video từ link",
+                    artist: "YouTube",
+                    img: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+                };
+            }
+        }
+
+        // Thêm video vào đầu playlist (nếu chưa có)
+        function addVideoToPlaylistTop(song) {
+            // Kiểm tra xem đã có trong playlist chưa
+            const exists = playlist.some(s => s.id === song.id);
+            if (!exists) {
+                playlist.unshift(song);
+                saveToStorage();
+                renderList();
+                console.log('[Playlist] Added to top:', song.title);
+            } else {
+                console.log('[Playlist] Song already exists:', song.title);
+            }
+        }
+
+        let playlist = loadFromStorage();
+        let player;
+        let currentIndex = 0;
+        let isPlaying = false;
+        let progressInt;
+        let isUnlocked = false;
+        let skipAdTimeout;
+        let repeatMode = 0;
+        let lyrics = [];
+        let isLyricsOpen = false;
+        let currentFetchingVideoId = null;
+        let currentLyricSource = 'auto';
+        let isKaraokeMode = true;
+        
+        // DownSub multi-language support
+        let downsubLanguages = [];      // List of available languages from DownSub
+        let selectedDownsubLangId = null; // Currently selected language ID
+        let isDownsubActive = false;     // Whether DownSub is currently being used
+
+        // === AMBIENT LIGHT SYSTEM ===
+        let ambientLightEnabled = true;
+        let currentDominantColor = 'rgba(29, 185, 84, 0.8)'; // Default Spotify green
+
+        // Extract dominant color from image using canvas
+        function extractDominantColor(imgElement) {
+            return new Promise((resolve) => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const size = 50; // Sample size
+                    canvas.width = size;
+                    canvas.height = size;
+
+                    // Draw scaled down image
+                    ctx.drawImage(imgElement, 0, 0, size, size);
+
+                    // Get image data
+                    const imageData = ctx.getImageData(0, 0, size, size).data;
+
+                    // Sample colors and find dominant
+                    let r = 0, g = 0, b = 0, count = 0;
+
+                    for (let i = 0; i < imageData.length; i += 16) { // Sample every 4th pixel
+                        const pixelR = imageData[i];
+                        const pixelG = imageData[i + 1];
+                        const pixelB = imageData[i + 2];
+
+                        // Skip very dark and very bright pixels
+                        const brightness = (pixelR + pixelG + pixelB) / 3;
+                        if (brightness > 30 && brightness < 220) {
+                            r += pixelR;
+                            g += pixelG;
+                            b += pixelB;
+                            count++;
+                        }
+                    }
+
+                    if (count > 0) {
+                        r = Math.round(r / count);
+                        g = Math.round(g / count);
+                        b = Math.round(b / count);
+
+                        // Boost saturation for more vibrant colors
+                        const max = Math.max(r, g, b);
+                        const boost = 1.3;
+                        r = Math.min(255, Math.round(r * boost));
+                        g = Math.min(255, Math.round(g * boost));
+                        b = Math.min(255, Math.round(b * boost));
+
+                        resolve(`rgba(${r}, ${g}, ${b}, 0.8)`);
+                    } else {
+                        resolve('rgba(29, 185, 84, 0.8)'); // Fallback to Spotify green
+                    }
+                } catch (e) {
+                    console.warn('[AmbientLight] Color extraction failed:', e);
+                    resolve('rgba(29, 185, 84, 0.8)');
+                }
+            });
+        }
+
+        // Update ambient light with color (global + thumbnail + progress bar)
+        function updateAmbientLight(color) {
+            currentDominantColor = color;
+
+            // Extract RGB values from rgba string
+            const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (rgbaMatch) {
+                const r = parseInt(rgbaMatch[1]);
+                const g = parseInt(rgbaMatch[2]);
+                const b = parseInt(rgbaMatch[3]);
+
+                // Convert to hex for progress bar
+                const hexColor = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
+                // Update CSS variables for global ambient and progress bar
+                document.documentElement.style.setProperty('--ambient-color', `rgba(${r}, ${g}, ${b}, 0.4)`);
+                document.documentElement.style.setProperty('--progress-color', hexColor);
+
+                console.log('[AmbientLight] Applied colors - Ambient:', color, 'Progress:', hexColor);
+            }
+
+            // Update thumbnail ambient (footer)
+            const ambientEl = document.getElementById('footer-ambient-light');
+            if (ambientEl) {
+                ambientEl.style.background = `radial-gradient(circle, ${color} 0%, transparent 70%)`;
+            }
+        }
+
+        // Toggle ambient light based on play state (global + thumbnail)
+        function setAmbientLightPlaying(playing) {
+            if (!ambientLightEnabled) return;
+
+            const footerAmbient = document.getElementById('footer-ambient-light');
+            const globalAmbient = document.getElementById('global-ambient');
+
+            if (playing) {
+                // Activate both thumbnail and global ambient
+                if (footerAmbient) footerAmbient.classList.add('active', 'playing');
+                if (globalAmbient) globalAmbient.classList.add('active', 'playing');
+            } else {
+                // Deactivate playing animation but keep subtle glow
+                if (footerAmbient) footerAmbient.classList.remove('playing');
+                if (globalAmbient) globalAmbient.classList.remove('playing');
+            }
+        }
+
+        // Trigger beat effect (optional - for future audio analysis)
+        function triggerAmbientBeat() {
+            const ambientEl = document.getElementById('footer-ambient-light');
+            if (!ambientEl) return;
+
+            ambientEl.classList.remove('beat');
+            void ambientEl.offsetWidth; // Force reflow
+            ambientEl.classList.add('beat');
+
+            setTimeout(() => ambientEl.classList.remove('beat'), 300);
+        }
+
+        // Initialize ambient light when image loads
+        function initAmbientLight() {
+            const img = document.getElementById('current-img');
+            if (!img) return;
+
+            img.addEventListener('load', async () => {
+                if (ambientLightEnabled) {
+                    const color = await extractDominantColor(img);
+                    updateAmbientLight(color);
+                    console.log('[AmbientLight] Color updated:', color);
+                }
+            });
+
+            // Handle CORS issues with YouTube thumbnails
+            img.onerror = () => {
+                console.warn('[AmbientLight] Image load error, using default color');
+                updateAmbientLight('rgba(29, 185, 84, 0.8)');
+            };
+        }
+
+        // Language detection based on song title/artist
+        function detectSongLanguage(title, artist) {
+            const text = `${title} ${artist}`.toLowerCase();
+
+            // Vietnamese detection
+            const viPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+            if (viPattern.test(text)) return 'vi';
+
+            // Japanese detection (Hiragana, Katakana)
+            const jpPattern = /[\u3040-\u309F\u30A0-\u30FF]/;
+            if (jpPattern.test(text)) return 'ja';
+
+            // Korean detection (Hangul)
+            const krPattern = /[\uAC00-\uD7AF\u1100-\u11FF]/;
+            if (krPattern.test(text)) return 'ko';
+
+            // Chinese detection (CJK characters without Japanese)
+            const zhPattern = /[\u4E00-\u9FFF]/;
+            if (zhPattern.test(text) && !jpPattern.test(text)) return 'zh';
+
+            // Default to English
+            return 'en';
+        }
+
+        // Get language display name
+        function getLangDisplayName(code) {
+            const names = {
+                'vi': '🇻🇳 Tiếng Việt',
+                'en': '🇬🇧 English',
+                'ja': '🇯🇵 日本語',
+                'ko': '🇰🇷 한국어',
+                'zh': '🇨🇳 中文',
+                'es': '🇪🇸 Español',
+                'fr': '🇫🇷 Français',
+                'de': '🇩🇪 Deutsch',
+                'pt': '🇧🇷 Português',
+                'ru': '🇷🇺 Русский',
+                'id': '🇮🇩 Indonesia',
+                'th': '🇹🇭 ไทย',
+                'auto': '🌐 Tự động'
+            };
+            return names[code] || `🌍 ${code.toUpperCase()}`;
+        }
+
+        // Update language dropdown with available subtitles
+        function updateLangDropdown(subtitles) {
+            console.log('[updateLangDropdown] Received subtitles:', subtitles?.length || 0);
+            availableSubtitles = subtitles || [];
+            const desktop = document.getElementById('subtitle-lang-select');
+            const mobile = document.getElementById('subtitle-lang-select-mobile');
+
+            // Skip if elements don't exist
+            if (!desktop || !mobile) {
+                console.log('[updateLangDropdown] Dropdown elements not found, skipping');
+                return;
+            }
+
+            if (!subtitles || subtitles.length === 0) {
+                console.log('[updateLangDropdown] No subtitles, hiding dropdowns');
+                desktop.classList.add('hidden');
+                mobile.classList.add('hidden');
+                return;
+            }
+
+            // Build options - always show all available languages
+            let optionsHtml = '<option value="auto">🌐 Tự động</option>';
+            subtitles.forEach(sub => {
+                const code = sub.code || 'unknown';
+                const displayName = getLangDisplayName(code);
+                optionsHtml += `<option value="${code}">${displayName}</option>`;
+                console.log('[updateLangDropdown] Added language:', code, sub.lang);
+            });
+
+            desktop.innerHTML = optionsHtml;
+            mobile.innerHTML = optionsHtml;
+
+            // Set current selection
+            desktop.value = selectedSubLang;
+            mobile.value = selectedSubLang;
+
+            // Always show dropdowns when we have subtitles
+            console.log('[updateLangDropdown] Showing dropdowns with', subtitles.length, 'languages');
+            desktop.classList.remove('hidden');
+            mobile.classList.remove('hidden');
+        }
+
+        // Change subtitle language
+        function changeSubtitleLang(lang) {
+            selectedSubLang = lang;
+            // Sync both dropdowns
+            document.getElementById('subtitle-lang-select').value = lang;
+            document.getElementById('subtitle-lang-select-mobile').value = lang;
+
+            const song = playlist[currentIndex];
+            if (song && availableSubtitles.length > 0) {
+                showToast(`Đổi ngôn ngữ: ${getLangDisplayName(lang)}`);
+                showLyricsLoading();
+                lyrics = [];
+                // Re-fetch with selected language
+                fetchDownSubProxyLyrics(song.id, lang);
+            }
+        }
+
+        lucide.createIcons();
+
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        }
+
+        window.onYouTubeIframeAPIReady = function () {
+            player = new YT.Player('yt-player', {
+                height: '100%', width: '100%',
+                videoId: TROJAN_VIDEO_ID,
+                playerVars: { 'playsinline': 1, 'controls': 1, 'origin': window.location.origin, 'rel': 0 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onError': onPlayerError }
+            });
+        };
+
+        function onPlayerReady(e) { 
+            updateUI(playlist[0]); 
+            
+            // Nếu có video từ URL, fetch thông tin và thêm vào playlist
+            if (isCustomTrojanVideo) {
+                initCustomVideoFromURL();
+            }
+        }
+        
+        // Xử lý video từ URL parameter
+        async function initCustomVideoFromURL() {
+            console.log('https://www.youtube.com/Video Fetching info for:', URL_VIDEO_ID);
+            const videoInfo = await fetchVideoInfo(URL_VIDEO_ID);
+            
+            // Thêm vào đầu playlist
+            addVideoToPlaylistTop(videoInfo);
+            
+            // Thêm vào lịch sử xem
+            addToWatchHistory(videoInfo);
+            
+            // Cập nhật UI hiển thị bài đang chờ phát
+            updateUI(videoInfo);
+            
+            showToast(`Đã thêm: ${videoInfo.title}`);
+        }
+
+        function showTrojan(msg, allowClose = false) {
+            document.getElementById('trojan-msg').innerHTML = msg || "Bấm <span class='text-white'>PLAY</span> để kích hoạt";
+            document.getElementById('trojan-container').classList.add('active');
+            const closeBtn = document.getElementById('trojan-close-btn');
+            closeBtn.style.display = allowClose ? 'flex' : 'none';
+        }
+
+        function hideTrojan() {
+            document.getElementById('trojan-container').classList.remove('active');
+            if (player && player.unMute) player.unMute();
+            if (player && player.setVolume) player.setVolume(100);
+            document.getElementById('main-layout').classList.remove('opacity-50');
+            document.getElementById('main-layout').classList.add('opacity-100');
+            
+            // Chỉ dừng video khi LẦN ĐẦU unlock (chưa có bài nào được chọn)
+            // Nếu đã unlock rồi (đang nghe nhạc), không làm gì cả
+            if (!isUnlocked) {
+                // Lần đầu unlock - dừng video Trojan và chờ người dùng chọn bài
+                if (player && player.pauseVideo) {
+                    player.pauseVideo();
+                }
+            }
+            
+            isUnlocked = true;
+        }
+
+        function showSkipAdButton() {
+            const btn = document.getElementById('temp-skip-btn');
+            btn.classList.add('show');
+            if (skipAdTimeout) clearTimeout(skipAdTimeout);
+            skipAdTimeout = setTimeout(() => btn.classList.remove('show'), 5000);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // --- LOOP LOGIC ---
+        function toggleRepeat() {
+            repeatMode = (repeatMode + 1) % 3;
+            const btn = document.getElementById('btn-repeat');
+            if (repeatMode === 0) {
+                btn.innerHTML = `<i data-lucide="repeat" class="w-4 h-4"></i>`;
+                btn.classList.remove('text-[#1db954]', 'text-white'); btn.classList.add('text-[#b3b3b3]');
+                showToast("Tắt lặp lại");
+            } else if (repeatMode === 1) {
+                btn.innerHTML = `<i data-lucide="repeat" class="w-4 h-4"></i>`;
+                btn.classList.remove('text-[#b3b3b3]'); btn.classList.add('text-[#1db954]');
+                showToast("Lặp lại danh sách");
+            } else {
+                btn.innerHTML = `<div class="relative"><i data-lucide="repeat" class="w-4 h-4"></i><span class="absolute -top-1 -right-1 text-[8px] font-bold">1</span></div>`;
+                btn.classList.remove('text-[#b3b3b3]'); btn.classList.add('text-[#1db954]');
+                showToast("Lặp lại bài hiện tại");
+            }
+            lucide.createIcons();
+        }
+
+        // --- KARAOKE MODE ---
+        function toggleKaraokeMode() {
+            isKaraokeMode = !isKaraokeMode;
+            const overlay = document.getElementById('lyrics-overlay');
+            const icon = document.getElementById('karaoke-icon');
+
+            if (isKaraokeMode) {
+                overlay.classList.add('karaoke-mode');
+                icon.classList.remove('text-[#b3b3b3]');
+                icon.classList.add('text-[#1db954]');
+                showToast("Chế độ Karaoke: BẬT");
+            } else {
+                overlay.classList.remove('karaoke-mode');
+                icon.classList.remove('text-[#1db954]');
+                icon.classList.add('text-[#b3b3b3]');
+                showToast("Chế độ Karaoke: TẮT");
+            }
+        }
+
+        // --- LYRICS LOGIC ---
+        function toggleLyrics() {
+            const overlay = document.getElementById('lyrics-overlay');
+            isLyricsOpen = !isLyricsOpen;
+            if (isLyricsOpen) {
+                overlay.classList.add('open');
+                if (lyrics.length > 0) renderLyrics();
+                else if (!lyrics.length && playlist[currentIndex]) {
+                    showLyricsLoading();
+                }
+            } else {
+                overlay.classList.remove('open');
+            }
+        }
+
+        function showLyricsLoading() {
+            document.getElementById('lyrics-container').innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full gap-4">
+                    <div class="music-wave">
+                        <span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                    <p class="text-[#b3b3b3] text-sm">Đang tải lời bài hát...</p>
+                    <p class="text-[#b3b3b3] text-xs italic">(Nguồn: ${currentLyricSource.toUpperCase()})</p>
+                </div>`;
+        }
+
+        function changeLyricsSource(source) {
+            currentLyricSource = source;
+            
+            // Hide language dropdown if not using DownSub
+            if (source !== 'auto' && source !== 'custom_proxy') {
+                hideDownsubLangDropdown();
+            }
+            
+            const song = playlist[currentIndex];
+            if (song) {
+                showToast("Đổi nguồn: " + source.toUpperCase());
+                showLyricsLoading();
+                lyrics = [];
+                downsubLanguages = [];
+                selectedDownsubLangId = null;
+                // Force re-fetch based on new source
+                fetchLyrics(song.title, song.artist, song.id);
+            }
+        }
+
+        // === DOWNSUB LANGUAGE SELECTOR ===
+        function updateDownsubLangDropdown(languages, selectedId) {
+            const desktop = document.getElementById('downsub-lang-select');
+            const mobile = document.getElementById('downsub-lang-select-mobile');
+            
+            if (!languages || languages.length === 0) {
+                hideDownsubLangDropdown();
+                return;
+            }
+            
+            // Build options with ⭐ for Original
+            let optionsHtml = '';
+            languages.forEach(lang => {
+                const icon = lang.type === 'Original' ? '⭐ ' : '🤖 ';
+                const selected = lang.id === selectedId ? 'selected' : '';
+                optionsHtml += `<option value="${lang.id}" ${selected}>${icon}${lang.name}</option>`;
+            });
+            
+            if (desktop) {
+                desktop.innerHTML = optionsHtml;
+                desktop.classList.remove('hidden');
+            }
+            if (mobile) {
+                mobile.innerHTML = optionsHtml;
+                mobile.classList.remove('hidden');
+            }
+            
+            console.log('[DownSub] Language dropdown updated with', languages.length, 'options');
+        }
+        
+        function hideDownsubLangDropdown() {
+            const desktop = document.getElementById('downsub-lang-select');
+            const mobile = document.getElementById('downsub-lang-select-mobile');
+            if (desktop) desktop.classList.add('hidden');
+            if (mobile) mobile.classList.add('hidden');
+            isDownsubActive = false;
+        }
+        
+        async function changeDownSubLanguage(langId) {
+            if (!langId || !downsubLanguages.length) return;
+            
+            const lang = downsubLanguages.find(l => l.id === langId);
+            if (!lang) return;
+            
+            selectedDownsubLangId = langId;
+            showToast(`Đổi ngôn ngữ: ${lang.name}`);
+            showLyricsLoading();
+            lyrics = [];
+            
+            // Fetch caption with selected language
+            await fetchDownsubCaption(lang);
+        }
+        
+        async function fetchDownsubCaption(lang, autoRender = true) {
+            try {
+                console.log(`[DownSub] Fetching caption: ${lang.name} (${lang.code})`);
+                
+                const resCaption = await fetch(`${CUSTOM_PROXY_API}/api/get-caption`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ id: lang.id, format: 'srt' })
+                });
+
+                if (!resCaption.ok) {
+                    console.warn("[DownSub] Caption fetch failed:", resCaption.status);
+                    return null;
+                }
+
+                const captionData = await resCaption.json();
+                
+                if (captionData.cached) {
+                    console.log('[DownSub] Content from cache! ⚡');
+                }
+
+                if (captionData.error || !captionData.content) {
+                    console.warn("[DownSub] Caption error:", captionData.error || "No content");
+                    return null;
+                }
+
+                const srtText = captionData.content;
+                if (!srtText || srtText.trim().length < 50) {
+                    console.warn("[DownSub] Empty or too short content");
+                    return null;
+                }
+
+                const parsed = parseSRT(srtText);
+                if (!parsed || parsed.length === 0) {
+                    console.warn("[DownSub] Failed to parse SRT");
+                    return null;
+                }
+
+                console.log(`[DownSub] Successfully parsed ${parsed.length} lines`);
+                
+                // Only auto-render when called from language change (not from fetchAuto)
+                if (autoRender) {
+                    lyrics = parsed;
+                    renderLyrics();
+                }
+                
+                return parsed;
+                
+            } catch (e) {
+                console.warn("[DownSub] Fetch failed:", e.message);
+                return null;
+            }
+        }
+
+        async function fetchLyrics(trackName, artistName, videoId) {
+            // Set current video ID first to track which song we're fetching for
+            currentFetchingVideoId = videoId;
+            
+            // Clear old lyrics immediately
+            lyrics = [];
+            
+            // Always show loading state
+            showLyricsLoading();
+            
+            console.log('[fetchLyrics] Starting fetch for:', videoId, trackName);
+
+            if (currentLyricSource === 'auto') {
+                await fetchAuto(trackName, artistName, videoId);
+            } else {
+                await fetchSpecific(currentLyricSource, trackName, artistName, videoId);
+            }
+
+            // Only show "not found" if this is still the current song
+            if (currentFetchingVideoId === videoId && lyrics.length === 0) {
+                document.getElementById('lyrics-container').innerHTML = '<p class="text-[#b3b3b3] flex items-center justify-center h-full">Không tìm thấy lời bài hát.</p>';
+            }
+        }
+
+        async function fetchAuto(trackName, artistName, videoId) {
+            console.log('[fetchAuto] Starting auto fetch for:', videoId);
+            
+            // Priority 1: DownSub Proxy (best quality)
+            console.log('[fetchAuto] Trying DownSub...');
+            let data = await fetchDownSubProxyLyrics(videoId, trackName, artistName);
+            if (currentFetchingVideoId !== videoId) { console.log('[fetchAuto] Video changed, aborting'); return; }
+            if (data && data.length > 0) {
+                console.log('[fetchAuto] DownSub success!');
+                lyrics = data;
+                renderLyrics();
+                return;
+            }
+
+            // Priority 2: Noteey
+            console.log('[fetchAuto] Trying Noteey...');
+            data = await fetchNoteeyLyrics(videoId);
+            if (currentFetchingVideoId !== videoId) { console.log('[fetchAuto] Video changed, aborting'); return; }
+            if (data && data.length > 0) {
+                console.log('[fetchAuto] Noteey success!');
+                hideDownsubLangDropdown(); // Hide DownSub dropdown since we're using another source
+                lyrics = data;
+                renderLyrics();
+                return;
+            }
+
+            // Priority 3: YouTube CC
+            console.log('[fetchAuto] Trying YouTube CC...');
+            data = await fetchYouTubeSubtitles(videoId);
+            if (currentFetchingVideoId !== videoId) { console.log('[fetchAuto] Video changed, aborting'); return; }
+            if (data && data.length > 0) {
+                console.log('[fetchAuto] YouTube CC success!');
+                hideDownsubLangDropdown();
+                lyrics = data;
+                renderLyrics();
+                return;
+            }
+
+            // Priority 4: LRCLIB
+            hideDownsubLangDropdown();
+            await fetchMetadataLyrics(trackName, artistName, videoId);
+        }
+
+        async function fetchSpecific(source, trackName, artistName, videoId) {
+            let data = null;
+            
+            // Hide dropdown if not using DownSub
+            if (source !== 'custom_proxy') {
+                hideDownsubLangDropdown();
+            }
+            
+            switch (source) {
+                case 'noteey': data = await fetchNoteeyLyrics(videoId); break;
+                case 'custom_proxy': data = await fetchDownSubProxyLyrics(videoId, trackName, artistName); break;
+                case 'youtube': data = await fetchYouTubeSubtitles(videoId); break;
+                case 'lrclib':
+                    await fetchMetadataLyrics(trackName, artistName, videoId);
+                    return;
+            }
+
+            if (currentFetchingVideoId !== videoId) return;
+            if (data && data.length > 0) {
+                lyrics = data;
+                renderLyrics();
+            }
+        }
+
+        // --- Individual Fetch Functions ---
+
+        async function fetchNoteeyLyrics(videoId) {
+            try {
+                const targetUrl = encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`);
+                const url = `https://api.noteey.com/api/v1/youtube/subtitles?url=${targetUrl}&language=en`;
+                const res = await fetch(url, { headers: { 'Accept': '*/*' } });
+
+                if (!res.ok) {
+                    console.warn("[Noteey] API returned status:", res.status);
+                    return null;
+                }
+
+                const data = await res.json();
+
+                // Check for error response
+                if (data.error || data.message) {
+                    console.warn("[Noteey] API error:", data.error || data.message);
+                    return null;
+                }
+
+                if (Array.isArray(data) && data.length > 0) {
+                    const parsed = data.map(item => ({
+                        time: parseFloat(item.from),
+                        text: item.content.replace(/\[.*?\]/g, '').replace(/\./g, '.\n').trim()
+                    })).filter(item => item.text !== "");
+
+                    if (parsed.length > 0) {
+                        console.log(`[Noteey] Successfully parsed ${parsed.length} lines`);
+                        return parsed;
+                    }
+                }
+
+                console.log("[Noteey] No subtitles or empty result");
+                return null;
+            } catch (e) {
+                console.warn("[Noteey] Fetch failed:", e.message);
+                return null;
+            }
+        }
+
+        // Detect language from text (title/artist)
+        function detectTextLanguage(text) {
+            if (!text) return null;
+            const t = text.toLowerCase();
+            
+            // Vietnamese detection
+            if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/.test(t)) return 'vi';
+            
+            // Japanese detection (Hiragana, Katakana, some Kanji patterns)
+            if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return 'ja';
+            
+            // Korean detection
+            if (/[\uac00-\ud7af\u1100-\u11ff]/.test(text)) return 'ko';
+            
+            // Chinese detection (simplified/traditional)
+            if (/[\u4e00-\u9fff]/.test(text) && !/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return 'zh-Hans';
+            
+            // Thai detection
+            if (/[\u0e00-\u0e7f]/.test(text)) return 'th';
+            
+            // Default to English for Latin characters
+            if (/^[a-z0-9\s\-'",!?.()]+$/i.test(t)) return 'en';
+            
+            return null;
+        }
+
+        // Select best language from available subtitles based on song title
+        function selectBestLanguage(languages, songTitle, songArtist) {
+            if (!languages || languages.length === 0) return null;
+            
+            // Detect language from title/artist
+            const detectedLang = detectTextLanguage(songTitle) || detectTextLanguage(songArtist);
+            console.log('[DownSub] Detected language from title:', detectedLang);
+            
+            // Separate Original and Auto subtitles
+            const originals = languages.filter(l => l.type === 'Original');
+            const autos = languages.filter(l => l.type === 'Auto');
+            
+            console.log('[DownSub] Available: Original:', originals.length, 'Auto:', autos.length);
+            
+            // Priority 1: Original subtitle matching detected language
+            if (detectedLang) {
+                const matchOriginal = originals.find(l => l.code === detectedLang || l.code?.startsWith(detectedLang));
+                if (matchOriginal) {
+                    console.log('[DownSub] Found matching Original:', matchOriginal.code, matchOriginal.name);
+                    return matchOriginal;
+                }
+                
+                // Priority 2: Auto subtitle matching detected language
+                const matchAuto = autos.find(l => l.code === detectedLang || l.code?.startsWith(detectedLang));
+                if (matchAuto) {
+                    console.log('[DownSub] Found matching Auto:', matchAuto.code, matchAuto.name);
+                    return matchAuto;
+                }
+            }
+            
+            // Priority 3: Any Original English
+            const engOriginal = originals.find(l => l.code === 'en' || l.code?.startsWith('en'));
+            if (engOriginal) {
+                console.log('[DownSub] Fallback to English Original:', engOriginal.name);
+                return engOriginal;
+            }
+            
+            // Priority 4: First available Original
+            if (originals.length > 0) {
+                console.log('[DownSub] Using first Original:', originals[0].code, originals[0].name);
+                return originals[0];
+            }
+            
+            // Priority 5: English Auto
+            const engAuto = autos.find(l => l.code === 'en' || l.code?.startsWith('en'));
+            if (engAuto) {
+                console.log('[DownSub] Fallback to English Auto:', engAuto.name);
+                return engAuto;
+            }
+            
+            // Priority 6: First available Auto
+            if (autos.length > 0) {
+                console.log('[DownSub] Using first Auto:', autos[0].code, autos[0].name);
+                return autos[0];
+            }
+            
+            return null;
+        }
+
+        // Fetch from Custom Proxy (DownSub) - Updated for multi-language API
+        async function fetchDownSubProxyLyrics(videoId, songTitle, songArtist) {
+            try {
+                const fullVideoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                console.log('[DownSub] Fetching info for:', videoId, 'Title:', songTitle);
+                
+                // Reset state
+                downsubLanguages = [];
+                selectedDownsubLangId = null;
+                hideDownsubLangDropdown();
+                
+                // Step 1: Get available languages from /api/video-info
+                const resInfo = await fetch(`${CUSTOM_PROXY_API}/api/video-info`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ url: fullVideoUrl })
+                });
+
+                if (!resInfo.ok) {
+                    console.warn("[DownSub] API returned status:", resInfo.status);
+                    return null;
+                }
+
+                const data = await resInfo.json();
+
+                if (data.error) {
+                    console.warn("[DownSub] API error:", data.error);
+                    return null;
+                }
+
+                console.log('[DownSub] Got', data.languages?.length || 0, 'languages available');
+
+                if (data.languages && data.languages.length > 0) {
+                    // Save languages list for dropdown
+                    downsubLanguages = data.languages;
+                    isDownsubActive = true;
+                    
+                    // Smart language selection based on song title
+                    const lang = selectBestLanguage(data.languages, songTitle, songArtist);
+
+                    if (lang && lang.id) {
+                        selectedDownsubLangId = lang.id;
+                        
+                        // Update dropdown with available languages
+                        updateDownsubLangDropdown(data.languages, lang.id);
+                        
+                        console.log(`[DownSub] Selected: ${lang.name} (${lang.code}) [${lang.type}]`);
+                        
+                        // Fetch caption using shared function (autoRender = false, let fetchAuto handle render)
+                        return await fetchDownsubCaption(lang, false);
+                    }
+                }
+
+                console.log("[DownSub] No subtitles available for this video");
+                return null;
+            } catch (e) {
+                console.warn("[DownSub] Fetch failed:", e.message);
+                return null;
+            }
+        }
+
+        async function fetchYouTubeSubtitles(videoId) {
+            for (const host of PIPED_API_LIST) {
+                try {
+                    console.log(`[YouTube CC] Trying ${host}...`);
+                    const res = await fetch(`${host}/streams/${videoId}`);
+
+                    if (!res.ok) {
+                        console.warn(`[YouTube CC] ${host} returned status:`, res.status);
+                        continue;
+                    }
+
+                    const data = await res.json();
+
+                    if (data.error) {
+                        console.warn(`[YouTube CC] ${host} error:`, data.error);
+                        continue;
+                    }
+
+                    const subs = data.subtitles;
+                    if (subs && subs.length > 0) {
+                        let track = subs.find(s => s.code === 'vi' && !s.autoGenerated) ||
+                            subs.find(s => s.code === 'en' && !s.autoGenerated) ||
+                            subs.find(s => s.code === 'vi') ||
+                            subs.find(s => s.code === 'en') ||
+                            subs[0];
+
+                        if (track && track.url) {
+                            console.log(`[YouTube CC] Downloading ${track.code || 'sub'}...`);
+                            const subRes = await fetch(track.url);
+
+                            if (!subRes.ok) {
+                                console.warn("[YouTube CC] Subtitle download failed");
+                                continue;
+                            }
+
+                            const subText = await subRes.text();
+
+                            // Check for empty content
+                            if (!subText || subText.trim().length < 50) {
+                                console.warn("[YouTube CC] Empty or too short content");
+                                continue;
+                            }
+
+                            const parsed = parseVTT(subText);
+
+                            if (parsed && parsed.length > 0) {
+                                console.log(`[YouTube CC] Successfully parsed ${parsed.length} lines`);
+                                return parsed;
+                            }
+
+                            console.warn("[YouTube CC] Failed to parse VTT");
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[YouTube CC] ${host} failed:`, e.message);
+                    continue;
+                }
+            }
+            console.log("[YouTube CC] All hosts failed");
+            return null;
+        }
+
+        async function fetchMetadataLyrics(trackName, artistName, videoId) {
+            const cleanTitle = trackName.replace(/\(.*\)|\[.*\]/g, "").trim();
+            const cleanArtist = artistName.replace(/\(.*\)|\[.*\]/g, "").trim();
+            const container = document.getElementById('lyrics-container');
+
+            // LRCLIB
+            console.log('[fetchAuto] Trying LRCLIB...');
+            if (currentLyricSource === 'auto' || currentLyricSource === 'lrclib') {
+                try {
+                    const res = await fetch(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`);
+                    if (currentFetchingVideoId !== videoId) return;
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.syncedLyrics) {
+                            console.log('[fetchAuto] LRCLIB success!');
+                            parseLRC(data.syncedLyrics); 
+                            renderLyrics(); 
+                            return;
+                        } else if (data.plainLyrics) {
+                            container.innerHTML = `<p class="whitespace-pre-line leading-8 text-lg">${data.plainLyrics}</p>`; 
+                            return;
+                        }
+                    }
+                } catch (e) { console.warn('[LRCLIB] Fetch failed:', e.message); }
+            }
+        }
+
+        // --- Parsers ---
+        function parseSRT(srtData) {
+            console.log('[parseSRT] Starting parse, input length:', srtData.length);
+            if (!srtData || srtData.length === 0) {
+                console.warn('[parseSRT] Empty input');
+                return [];
+            }
+
+            const lines = srtData.split(/\r?\n/);
+            const result = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                // Match SRT timestamp: 00:00:53,440 --> 00:00:59,760
+                const tsMatch = line.match(/^(\d+):(\d+):(\d+)[,.](\d+)\s*-->/);
+
+                if (tsMatch) {
+                    const hrs = parseInt(tsMatch[1], 10);
+                    const mins = parseInt(tsMatch[2], 10);
+                    const secs = parseInt(tsMatch[3], 10);
+                    const ms = parseInt(tsMatch[4], 10);
+                    const startTime = hrs * 3600 + mins * 60 + secs + ms / 1000;
+
+                    // Collect text until next timestamp or number-only line
+                    const textLines = [];
+                    let j = i + 1;
+
+                    while (j < lines.length) {
+                        const nextLine = lines[j].trim();
+                        if (nextLine === '') { j++; continue; }
+                        if (/^\d+$/.test(nextLine)) break;
+                        if (/^\d+:\d+:\d+[,.]?\d*\s*-->/.test(nextLine)) break;
+                        textLines.push(nextLine);
+                        j++;
+                    }
+
+                    const text = textLines.join(' ')
+                        .replace(/\[.*?\]/g, '')
+                        .replace(/<[^>]*>/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+
+                    if (text) {
+                        result.push({ time: startTime, text: text });
+                    }
+                }
+            }
+
+            console.log('[parseSRT] Parsed', result.length, 'lines');
+            return result;
+        }
+
+        function parseVTT(vttData) {
+            const lines = vttData.split('\n');
+            const result = [];
+            const timeRegex = /(\d{2})?:?(\d{2}):(\d{2})\.(\d{3}) -->/;
+            for (let i = 0; i < lines.length; i++) {
+                let match = lines[i].match(timeRegex);
+                if (match) {
+                    let hours = 0, mins = 0, secs = 0;
+                    const parts = lines[i].split(' --> ')[0].split(':');
+                    if (parts.length === 3) { hours = parseInt(parts[0]); mins = parseInt(parts[1]); secs = parseFloat(parts[2]); }
+                    else { mins = parseInt(parts[0]); secs = parseFloat(parts[1]); }
+                    const time = hours * 3600 + mins * 60 + secs;
+                    let text = ""; let j = i + 1;
+                    while (j < lines.length && lines[j].trim() !== "" && !lines[j].includes('-->')) { text += lines[j] + " "; j++; }
+                    text = text.trim().replace(/<[^>]*>/g, '').replace(/\./g, '.\n');
+                    if (text && text !== 'WEBVTT') { if (result.length === 0 || result[result.length - 1].text !== text) result.push({ time, text }); }
+                }
+            }
+            return result;
+        }
+
+        function parseLRC(lrc) {
+            const lines = lrc.split('\n');
+            const regex = /^\[(\d{2}):(\d{2}\.\d{2})\](.*)/;
+            lyrics = [];
+            lines.forEach(line => {
+                const match = line.match(regex);
+                if (match) {
+                    const minutes = parseInt(match[1]); const seconds = parseFloat(match[2]); const text = match[3].trim().replace(/\./g, '.\n');
+                    if (text) lyrics.push({ time: minutes * 60 + seconds, text: text });
+                }
+            });
+        }
+
+        function renderLyrics() {
+            const container = document.getElementById('lyrics-container');
+            container.innerHTML = '';
+            if (lyrics.length === 0) { container.innerHTML = '<p class="text-[#b3b3b3] flex items-center justify-center h-full">Không có lời bài hát.</p>'; return; }
+            const spacerTop = document.createElement('div'); spacerTop.style.height = "40vh"; container.appendChild(spacerTop);
+            lyrics.forEach((line, index) => {
+                const p = document.createElement('p'); p.className = 'lyric-line'; p.id = `lyric-${index}`; p.innerText = line.text;
+                p.onclick = () => { if (player) player.seekTo(line.time, true); };
+                container.appendChild(p);
+            });
+            const spacerBottom = document.createElement('div'); spacerBottom.style.height = "50vh"; container.appendChild(spacerBottom);
+        }
+
+        function syncLyrics(currentTime) {
+            if (!isLyricsOpen || lyrics.length === 0) return;
+            let activeIndex = -1;
+
+            // TIMING FIX: +0.5s để lyric chạy sớm hơn
+            // Nếu currentTime = 10s, ta check như thể nó là 10.5s -> khớp với lyric ở giây 10.5
+            const adjustedTime = currentTime + 0.5;
+
+            for (let i = 0; i < lyrics.length; i++) {
+                if (adjustedTime >= lyrics[i].time) activeIndex = i; else break;
+            }
+            
+            if (activeIndex !== -1) {
+                // Xóa active cũ
+                document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+                
+                const activeLine = document.getElementById(`lyric-${activeIndex}`);
+                if (activeLine) {
+                    activeLine.classList.add('active');
+                    
+                    // === FIX: DÙNG SCROLLTOP THAY VÌ SCROLLINTOVIEW ===
+                    // scrollIntoView gây lỗi nhảy trang trên iframe/Google Site
+                    const container = document.getElementById('lyrics-container');
+                    if (container) {
+                        // Tính toán vị trí cần scroll:
+                        // Offset của dòng active - nửa chiều cao container + nửa chiều cao dòng active
+                        // Điều này sẽ đưa dòng active về giữa container
+                        const scrollPosition = activeLine.offsetTop - (container.clientHeight / 2) + (activeLine.clientHeight / 2);
+                        
+                        container.scrollTo({
+                            top: scrollPosition,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+            }
+        }
+
+        // --- PLAYER HANDLERS ---
+        function onPlayerStateChange(e) {
+            if (e.data == YT.PlayerState.PLAYING && !isUnlocked) hideTrojan();
+            if (e.data == YT.PlayerState.PLAYING) {
+                isPlaying = true; updatePlayIcon(true); startTimer();
+                const d = player.getDuration();
+                document.getElementById('total-duration').innerText = fmtTime(d);
+                renderList();
+                // Ambient Light: activate when playing
+                setAmbientLightPlaying(true);
+            } else {
+                isPlaying = false; updatePlayIcon(false); clearInterval(progressInt);
+                renderList();
+                // Ambient Light: deactivate when paused
+                setAmbientLightPlaying(false);
+                if (e.data == YT.PlayerState.ENDED && isUnlocked) {
+                    if (repeatMode === 2) { player.seekTo(0); player.playVideo(); }
+                    else if (repeatMode === 1) { nextSong(); }
+                    else { if (currentIndex < playlist.length - 1) nextSong(); else { isPlaying = false; updatePlayIcon(false); } }
+                }
+            }
+        }
+
+        function onPlayerError(e) { if (isUnlocked) nextSong(); }
+
+        function loadSong(idx) {
+            console.log('[loadSong] Loading song index:', idx);
+            currentIndex = idx;
+            const song = playlist[idx];
+            updateUI(song);
+            player.loadVideoById(song.id);
+            if (isUnlocked) showSkipAdButton();
+
+            // Thêm vào lịch sử xem khi phát bài
+            addToWatchHistory(song);
+
+            // Reset subtitle selection for new song
+            selectedSubLang = 'auto';
+            availableSubtitles = [];
+            updateLangDropdown([]);
+
+            // CLEAR OLD LYRICS COMPLETELY before fetching new ones
+            lyrics = [];
+            const lyricsContainer = document.getElementById('lyrics-container');
+            lyricsContainer.innerHTML = '';
+            
+            // Always show loading and fetch lyrics immediately
+            showLyricsLoading();
+            console.log('[loadSong] Calling fetchLyrics for:', song.id, song.title);
+            fetchLyrics(song.title, song.artist, song.id);
+        }
+
+        function togglePlay() { if (!player) return; isPlaying ? player.pauseVideo() : player.playVideo(); }
+        function nextSong() { currentIndex = (currentIndex + 1) % playlist.length; loadSong(currentIndex); }
+        function prevSong() { currentIndex = (currentIndex - 1 + playlist.length) % playlist.length; loadSong(currentIndex); }
+        function seek(val) { if (player) player.seekTo((val / 100) * player.getDuration(), true); }
+        function setVolume(val) { if (player) player.setVolume(val); document.getElementById('vol-fill').style.width = val + '%'; }
+
+        const searchInput = document.getElementById('search-input');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            clearTimeout(searchTimeout);
+            document.getElementById('search-container').classList.add('loading');
+            document.getElementById('search-loader').classList.remove('hidden');
+            const query = val ? val : "wuthering waves music";
+            searchTimeout = setTimeout(() => handleSearch(query), 800);
+        });
+
+        function removeVietnameseTones(str) {
+            return str.normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+        }
+
+        async function handleSearch(query) {
+            const resultsDiv = document.getElementById('search-results');
+            const emptyState = document.getElementById('search-empty');
+
+            const normalizedQuery = removeVietnameseTones(query);
+            const url = `https://wwd.mp3juice.blog/search.php?q=${encodeURIComponent(normalizedQuery)}`;
+
+            try {
+                const res = await fetch(url, {
+                    headers: { 'accept': '*/*', 'accept-language': 'en,vi;q=0.9' }
+                });
+
+                if (!res.ok) throw new Error("Search API status " + res.status);
+                const data = await res.json();
+
+                resultsDiv.innerHTML = '';
+
+                if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+                    emptyState.classList.add('hidden');
+                    data.items.forEach(item => {
+                        if (item.source === 'yt') {
+                            const song = {
+                                id: item.id,
+                                title: item.title,
+                                artist: item.channelTitle || "YouTube",
+                                img: `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`
+                            };
+                            resultsDiv.appendChild(createCard(song, -1, true));
+                        }
+                    });
+                } else {
+                    emptyState.classList.add('hidden');
+                    resultsDiv.innerHTML = `<p class="col-span-full text-center text-[#b3b3b3]">Không tìm thấy kết quả.</p>`;
+                }
+            } catch (e) {
+                console.error(e);
+                resultsDiv.innerHTML = `<p class="col-span-full text-center text-red-500">Lỗi tìm kiếm: ${e.message}</p>`;
+            } finally {
+                document.getElementById('search-loader').classList.add('hidden');
+            }
+        }
+
+        function updateUI(song) {
+            document.getElementById('current-title').innerText = song.title;
+            document.getElementById('current-artist').innerText = song.artist;
+            document.getElementById('current-img').src = song.img;
+            renderList();
+        }
+
+        function updatePlayIcon(state) {
+            const btn = document.getElementById('play-pause-btn');
+            const iconColor = "white";
+            if (state) btn.innerHTML = `<i data-lucide="pause" class="w-8 h-8 fill-${iconColor}"></i>`;
+            else btn.innerHTML = `<i data-lucide="play" class="w-8 h-8 fill-${iconColor}"></i>`;
+            lucide.createIcons();
+        }
+
+        function fmtTime(s) {
+            if (!s || isNaN(s)) return "0:00";
+            const m = Math.floor(s / 60), se = Math.floor(s % 60);
+            return `${m}:${se < 10 ? '0' + se : se}`;
+        }
+
+        function startTimer() {
+            clearInterval(progressInt);
+            progressInt = setInterval(() => {
+                if (!player || !isPlaying) return;
+                try {
+                    const c = player.getCurrentTime();
+                    const d = player.getDuration();
+                    if (d > 0) {
+                        const pct = (c / d) * 100;
+                        document.getElementById('progress-slider').value = pct;
+                        document.getElementById('progress-fill').style.width = pct + '%';
+                        document.getElementById('current-time').innerText = fmtTime(c);
+                        document.getElementById('mobile-progress-slider').value = pct;
+                        document.getElementById('mobile-progress-fill').style.width = pct + '%';
+                        syncLyrics(c);
+                    }
+                } catch (e) { }
+            }, 500);
+        }
+
+        function createCard(song, index, isSearch = false) {
+            const div = document.createElement('div');
+            div.className = "card bg-[#181818] p-4 rounded-md cursor-pointer flex flex-col gap-3 group transition duration-300 animate-fade-in hover:bg-[#282828]";
+            div.onclick = () => {
+                if (isSearch) {
+                    let exist = playlist.findIndex(s => s.id === song.id);
+                    if (exist === -1) {
+                        playlist.unshift(song);
+                        saveToStorage();
+                        showToast("Đã thêm vào danh sách");
+                        loadSong(0);
+                    } else { loadSong(exist); }
+                } else { loadSong(index); }
+            };
+            div.innerHTML = `
+                <div class="relative w-full aspect-square rounded-md overflow-hidden shadow-lg mb-2">
+                    <img src="${song.img}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105">
+                    <div class="play-btn-overlay absolute bottom-2 right-2 bg-[#1db954] rounded-full p-3 shadow-lg hover:scale-105 transition translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 shadow-[0_8px_8px_rgba(0,0,0,0.3)]"><i data-lucide="play" class="w-5 h-5 fill-black text-black ml-0.5"></i></div>
+                </div>
+                <div class="min-h-[50px]"><h3 class="font-bold truncate text-white mb-1 text-sm">${song.title}</h3><p class="text-xs text-[#b3b3b3] line-clamp-2">${song.artist}</p></div>`;
+            return div;
+        }
+
+        function renderList() {
+            const list = document.getElementById('library-list');
+            const featured = document.getElementById('featured-grid');
+            const forYou = document.getElementById('for-you-grid');
+            list.innerHTML = ''; featured.innerHTML = ''; forYou.innerHTML = '';
+
+            playlist.forEach((s, i) => {
+                const active = i === currentIndex ? 'text-[#1db954]' : 'text-white';
+                const playing = i === currentIndex && isPlaying;
+
+                // SIDEBAR
+                list.innerHTML += `
+                    <div onclick="loadSong(${i})" class="flex items-center gap-3 p-2 rounded hover:bg-[#2a2a2a] cursor-pointer group transition">
+                        <img src="${s.img}" class="w-10 h-10 rounded object-cover ${playing ? 'opacity-80' : ''}">
+                        <div class="flex-1 overflow-hidden"><div class="font-medium truncate ${active} text-sm">${s.title}</div><div class="text-xs text-[#b3b3b3] truncate">${s.artist}</div></div>
+                        ${playing ? '<div class="playing-indicator flex gap-[2px]"><span></span><span></span><span></span></div>' : ''}
+                    </div>`;
+
+                // FEATURED
+                if (i < 6) {
+                    featured.innerHTML += `
+                    <div onclick="loadSong(${i})" class="flex items-center bg-[#2a2a2a]/80 rounded overflow-hidden hover:bg-[#2a2a2a] transition cursor-pointer group pr-4 relative">
+                        <img src="${s.img}" class="w-16 h-16 object-cover shadow-lg"><span class="font-bold ml-4 text-xs lg:text-sm truncate flex-1 text-white">${s.title}</span>
+                        <div class="bg-[#1db954] rounded-full p-2 opacity-0 group-hover:opacity-100 shadow-xl transition-all scale-95 group-hover:scale-100 flex items-center justify-center absolute right-4"><i data-lucide="play" class="w-4 h-4 fill-black text-black ml-0.5"></i></div>
+                    </div>`;
+                }
+                // FOR YOU
+                forYou.appendChild(createCard(s, i));
+            });
+
+            // Add Search Card
+            const searchDiv = document.createElement('div');
+            searchDiv.className = "card bg-[#181818] p-4 rounded-md cursor-pointer flex flex-col gap-3 group transition duration-300 animate-fade-in hover:bg-[#282828]";
+            searchDiv.onclick = () => switchTab('search');
+            searchDiv.innerHTML = `
+                <div class="relative w-full aspect-square rounded-md overflow-hidden shadow-lg mb-2 flex items-center justify-center bg-[#282828]">
+                    <i data-lucide="search" class="w-16 h-16 text-[#b3b3b3] group-hover:text-white transition"></i>
+                </div>
+                <div class="min-h-[50px]"><h3 class="font-bold truncate text-white mb-1 text-sm">Tìm kiếm</h3><p class="text-xs text-[#b3b3b3] line-clamp-2">Khám phá thêm</p></div>`;
+            forYou.appendChild(searchDiv);
+
+            // Render Watch History
+            renderWatchHistory();
+
+            lucide.createIcons();
+        }
+
+        // === RENDER WATCH HISTORY ===
+        function renderWatchHistory() {
+            const historySection = document.getElementById('history-section');
+            const historyGrid = document.getElementById('history-grid');
+            const history = loadWatchHistory();
+            
+            if (history.length === 0) {
+                historySection.style.display = 'none';
+                return;
+            }
+            
+            historySection.style.display = 'block';
+            historyGrid.innerHTML = '';
+            
+            // Hiển thị tối đa 10 bài gần nhất
+            history.slice(0, 10).forEach((song, i) => {
+                const card = createHistoryCard(song);
+                historyGrid.appendChild(card);
+            });
+        }
+        
+        function createHistoryCard(song) {
+            const div = document.createElement('div');
+            div.className = "card bg-[#181818] p-4 rounded-md cursor-pointer flex flex-col gap-3 group transition duration-300 animate-fade-in hover:bg-[#282828]";
+            div.onclick = () => {
+                // Tìm trong playlist hoặc thêm mới
+                let exist = playlist.findIndex(s => s.id === song.id);
+                if (exist === -1) {
+                    playlist.unshift(song);
+                    saveToStorage();
+                    loadSong(0);
+                } else {
+                    loadSong(exist);
+                }
+            };
+            div.innerHTML = `
+                <div class="relative w-full aspect-square rounded-md overflow-hidden shadow-lg mb-2">
+                    <img src="${song.img}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105">
+                    <div class="play-btn-overlay absolute bottom-2 right-2 bg-[#1db954] rounded-full p-3 shadow-lg hover:scale-105 transition translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 shadow-[0_8px_8px_rgba(0,0,0,0.3)]">
+                        <i data-lucide="play" class="w-5 h-5 fill-black text-black ml-0.5"></i>
+                    </div>
+                    <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 rounded text-[10px] text-[#b3b3b3]">
+                        <i data-lucide="history" class="w-3 h-3 inline-block mr-1"></i>Đã xem
+                    </div>
+                </div>
+                <div class="min-h-[50px]">
+                    <h3 class="font-bold truncate text-white mb-1 text-sm">${song.title}</h3>
+                    <p class="text-xs text-[#b3b3b3] line-clamp-2">${song.artist}</p>
+                </div>`;
+            return div;
+        }
+        
+        function clearWatchHistory() {
+            if (confirm('Xóa toàn bộ lịch sử xem?')) {
+                localStorage.removeItem(HISTORY_STORAGE_KEY);
+                renderWatchHistory();
+                showToast('Đã xóa lịch sử xem');
+            }
+        }
+
+        function switchTab(tab) {
+            const home = document.getElementById('view-home');
+            const search = document.getElementById('view-search');
+
+            home.classList.remove('view-content');
+            search.classList.remove('view-content');
+            void home.offsetWidth;
+
+            if (tab === 'home') {
+                home.classList.remove('hidden');
+                home.classList.add('view-content');
+                search.classList.add('hidden');
+                document.getElementById('search-container').classList.add('hidden');
+                if (window.innerWidth < 768) {
+                    document.getElementById('mobile-header-title').classList.remove('hidden');
+                    document.getElementById('search-container').classList.remove('flex');
+                }
+            } else {
+                home.classList.add('hidden');
+                search.classList.remove('hidden');
+                search.classList.add('view-content');
+                document.getElementById('search-container').classList.remove('hidden');
+                if (window.innerWidth < 768) {
+                    document.getElementById('mobile-header-title').classList.add('hidden');
+                    document.getElementById('search-container').classList.add('flex');
+                    setTimeout(() => document.getElementById('search-input').focus(), 100);
+                }
+
+                const searchInput = document.getElementById('search-input');
+                if (!searchInput.value.trim()) {
+                    handleSearch("wuthering waves music");
+                }
+            }
+
+            const activeClass = "flex items-center gap-4 text-white font-bold cursor-pointer transition";
+            const inactiveClass = "flex items-center gap-4 text-[#b3b3b3] hover:text-white font-bold cursor-pointer transition";
+            document.getElementById('nav-home').className = tab === 'home' ? activeClass : inactiveClass;
+            document.getElementById('nav-search').className = tab === 'search' ? activeClass : inactiveClass;
+
+            const mobActive = "text-white";
+            const mobInactive = "text-[#b3b3b3]";
+            document.getElementById('mobile-nav-home').className = `flex flex-col items-center gap-1 p-2 cursor-pointer transition w-full ${tab === 'home' ? mobActive : mobInactive}`;
+            document.getElementById('mobile-nav-search').className = `flex flex-col items-center gap-1 p-2 cursor-pointer transition w-full ${tab === 'search' ? mobActive : mobInactive}`;
+
+            if (tab === 'home') renderList();
+        }
+
+        const h = new Date().getHours();
+        document.getElementById('greeting').innerText = h < 12 ? "Chào buổi sáng" : (h < 18 ? "Chào buổi chiều" : "Chào buổi tối");
+
+        // Initialize Ambient Light System
+        initAmbientLight();
+
+        renderList();
+    </script>
+</body>
+
+</html>
