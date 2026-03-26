@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>∞ CHAOS MACHINE ∞</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      font-family: 'Orbitron', monospace;
+    }
+
+    #canvas {
+      position: fixed;
+      inset: 0;
+    }
+
+    #ui {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    #title {
+      font-size: clamp(1.5rem, 5vw, 4rem);
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 30px #ff0080, 0 0 60px #ff0080, 0 0 120px #ff0080;
+      letter-spacing: 0.3em;
+      animation: flicker 3s infinite;
+    }
+
+    #counter {
+      font-size: clamp(0.8rem, 2vw, 1.4rem);
+      color: #00ffff;
+      text-shadow: 0 0 20px #00ffff;
+      margin-top: 12px;
+      letter-spacing: 0.2em;
+    }
+
+    #fps {
+      font-size: clamp(0.7rem, 1.5vw, 1rem);
+      color: #ff4400;
+      text-shadow: 0 0 10px #ff4400;
+      margin-top: 8px;
+    }
+
+    #warning {
+      margin-top: 20px;
+      font-size: clamp(0.5rem, 1.2vw, 0.8rem);
+      color: #ffff00;
+      text-shadow: 0 0 10px #ffff00;
+      animation: blink 0.5s step-end infinite;
+      letter-spacing: 0.15em;
+    }
+
+    @keyframes flicker {
+      0%, 90%, 100% { opacity: 1; }
+      91% { opacity: 0.4; }
+      92% { opacity: 1; }
+      93% { opacity: 0.2; }
+      94% { opacity: 1; }
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    #btn {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: transparent;
+      border: 2px solid #ff0080;
+      color: #ff0080;
+      font-family: 'Orbitron', monospace;
+      font-size: 1rem;
+      padding: 12px 36px;
+      cursor: pointer;
+      letter-spacing: 0.2em;
+      text-shadow: 0 0 10px #ff0080;
+      box-shadow: 0 0 20px #ff008044, inset 0 0 20px #ff008011;
+      transition: all 0.1s;
+      z-index: 9999;
+    }
+    #btn:hover {
+      background: #ff008022;
+      box-shadow: 0 0 40px #ff0080, inset 0 0 30px #ff008033;
+      transform: translateX(-50%) scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="ui">
+  <div id="title">∞ CHAOS MACHINE</div>
+  <div id="counter">PARTICLES: <span id="pcount">0</span></div>
+  <div id="fps">FPS: <span id="fpsval">--</span></div>
+  <div id="warning">⚠ MÁY BẠN SẼ LAG ⚠</div>
+</div>
+
+<button id="btn" onclick="toggleChaos()">▶ BẮT ĐẦU</button>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const pcountEl = document.getElementById('pcount');
+  const fpsEl = document.getElementById('fpsval');
+  const btn = document.getElementById('btn');
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  let particles = [];
+  let running = false;
+  let animId = null;
+  let frameCount = 0;
+  let lastFpsTime = performance.now();
+
+  const COLORS = [
+    '#ff0080','#00ffff','#ffff00','#ff4400',
+    '#7700ff','#00ff88','#ff00ff','#ffffff'
+  ];
+
+  class Particle {
+    constructor(x, y) {
+      this.x = x !== undefined ? x : Math.random() * canvas.width;
+      this.y = y !== undefined ? y : Math.random() * canvas.height;
+      this.vx = (Math.random() - 0.5) * 6;
+      this.vy = (Math.random() - 0.5) * 6;
+      this.life = 1;
+      this.decay = Math.random() * 0.004 + 0.001;
+      this.size = Math.random() * 4 + 1;
+      this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      this.trail = [];
+      this.spawnTimer = 0;
+      this.spawnRate = Math.floor(Math.random() * 60) + 30;
+    }
+
+    update(newParticles) {
+      this.trail.push({ x: this.x, y: this.y });
+      if (this.trail.length > 12) this.trail.shift();
+
+      this.vx += (Math.random() - 0.5) * 0.5;
+      this.vy += (Math.random() - 0.5) * 0.5;
+      this.vx *= 0.99;
+      this.vy *= 0.99;
+
+      this.x += this.vx;
+      this.y += this.vy;
+
+      if (this.x < 0) { this.x = 0; this.vx *= -1; }
+      if (this.x > canvas.width) { this.x = canvas.width; this.vx *= -1; }
+      if (this.y < 0) { this.y = 0; this.vy *= -1; }
+      if (this.y > canvas.height) { this.y = canvas.height; this.vy *= -1; }
+
+      this.life -= this.decay;
+
+      // Mỗi particle sinh ra particle mới
+      this.spawnTimer++;
+      if (this.spawnTimer >= this.spawnRate && this.life > 0.3) {
+        this.spawnTimer = 0;
+        const count = Math.floor(Math.random() * 3) + 1;
+        for (let i = 0; i < count; i++) {
+          newParticles.push(new Particle(
+            this.x + (Math.random() - 0.5) * 20,
+            this.y + (Math.random() - 0.5) * 20
+          ));
+        }
+      }
+    }
+
+    draw() {
+      // Vẽ trail
+      for (let i = 0; i < this.trail.length; i++) {
+        const alpha = (i / this.trail.length) * this.life * 0.4;
+        const alphaHex = Math.floor(alpha * 255).toString(16).padStart(2, '0');
+        ctx.beginPath();
+        ctx.arc(this.trail[i].x, this.trail[i].y, this.size * (i / this.trail.length), 0, Math.PI * 2);
+        ctx.fillStyle = this.color + alphaHex;
+        ctx.fill();
+      }
+
+      // Vẽ particle chính
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      const alphaHex = Math.floor(this.life * 255).toString(16).padStart(2, '0');
+      ctx.fillStyle = this.color + alphaHex;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = this.color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function loop() {
+    if (!running) return;
+
+    // Nền mờ dần (tạo hiệu ứng trail)
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Collect new particles during update to avoid modifying array mid-loop
+    const newParticles = [];
+
+    // Update & draw
+    for (let i = particles.length - 1; i >= 0; i--) {
+      particles[i].update(newParticles);
+      particles[i].draw();
+      if (particles[i].life <= 0) {
+        particles.splice(i, 1);
+      }
+    }
+
+    // Add new particles
+    for (const p of newParticles) {
+      particles.push(p);
+    }
+
+    // Update UI
+    pcountEl.textContent = particles.length;
+
+    // FPS counter
+    frameCount++;
+    const now = performance.now();
+    const elapsed = now - lastFpsTime;
+    if (elapsed >= 500) {
+      const fps = Math.round((frameCount * 1000) / elapsed);
+      fpsEl.textContent = fps;
+      frameCount = 0;
+      lastFpsTime = now;
+    }
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  // Click canvas để spawn particles
+  canvas.addEventListener('click', (e) => {
+    if (!running) return;
+    for (let i = 0; i < 20; i++) {
+      particles.push(new Particle(
+        e.clientX + (Math.random() - 0.5) * 30,
+        e.clientY + (Math.random() - 0.5) * 30
+      ));
+    }
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!running || Math.random() > 0.3) return;
+    particles.push(new Particle(e.clientX, e.clientY));
+  });
+
+  function toggleChaos() {
+    if (!running) {
+      running = true;
+      btn.textContent = '⏹ DỪNG LẠI';
+      // Spawn initial particles
+      for (let i = 0; i < 50; i++) {
+        particles.push(new Particle());
+      }
+      frameCount = 0;
+      lastFpsTime = performance.now();
+      loop();
+    } else {
+      running = false;
+      btn.textContent = '▶ BẮT ĐẦU';
+      if (animId) cancelAnimationFrame(animId);
+      particles = [];
+      pcountEl.textContent = '0';
+      fpsEl.textContent = '--';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+</script>
+
+</body>
+</html>
