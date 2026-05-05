@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fibonacci Terminal</title>
+    <style>
+        /* Tối giản tuyệt đối: Nền đen, chữ xanh monospace kiểu hacker */
+        body {
+            margin: 0;
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        #controls {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #111;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px 15px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:disabled {
+            color: #555;
+            cursor: not-allowed;
+        }
+        #log {
+            margin-top: 50px; /* Chừa chỗ cho thanh menu cố định */
+            padding: 10px;
+            word-wrap: break-word; /* Để số siêu dài tự xuống dòng */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <button id="startBtn" onclick="startWorker()">[ Start ]</button>
+        <button id="stopBtn" onclick="stopWorker()" disabled>[ Stop ]</button>
+    </div>
+    
+    <div id="log"></div>
+
+    <script id="workerCode" type="javascript/worker">
+        let u_prev = 0n;
+        let u_curr = 1n;
+        let count = 1;
+
+        self.onmessage = function(e) {
+            if (e.data === 'start') {
+                while (true) {
+                    let u_next = u_prev + u_curr;
+                    u_prev = u_curr;
+                    u_curr = u_next;
+                    count++;
+
+                    // Bắn data liên tục không ngừng nghỉ
+                    self.postMessage({
+                        count: count,
+                        value: u_curr.toString()
+                    });
+                }
+            }
+        };
+    </script>
+
+    <script>
+        let worker;
+        const logDiv = document.getElementById('log');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        function startWorker() {
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            logDiv.innerHTML = ''; // Xóa log cũ nếu có
+
+            const blob = new Blob([document.getElementById('workerCode').textContent], { type: "text/javascript" });
+            worker = new Worker(window.URL.createObjectURL(blob));
+
+            worker.onmessage = function(e) {
+                // Tạo thẻ div đơn giản nhất có thể và nhét vào log
+                const row = document.createElement('div');
+                row.textContent = `U(${e.data.count}) = ${e.data.value}`;
+                logDiv.appendChild(row);
+
+                // Cuộn xuống dòng cuối cùng
+                window.scrollTo(0, document.body.scrollHeight);
+            };
+
+            worker.postMessage('start');
+        }
+
+        function stopWorker() {
+            if (worker) {
+                worker.terminate();
+                worker = undefined;
+            }
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            
+            const row = document.createElement('div');
+            row.textContent = "--- KẾT THÚC ---";
+            logDiv.appendChild(row);
+        }
+    </script>
+
+</body>
+</html>
