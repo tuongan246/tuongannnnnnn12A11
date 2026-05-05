@@ -64,6 +64,7 @@
         button { color: #fff; min-width: 80px; }
         button:disabled { color: #555; cursor: not-allowed; background: #222; border-color: #333; }
         input { width: 60px; text-align: center; }
+        input:disabled { color: #555; background: #222; border-color: #333; cursor: not-allowed; }
         input::placeholder { color: #005500; }
 
         .group { display: flex; align-items: center; gap: 5px; }
@@ -122,6 +123,8 @@
         
         <div class="group">
             <button id="testBtn" onclick="runPerformanceTest()">[ Test Performance ]</button>
+            <input type="number" id="testTimeInput" min="1" value="10" title="Thời gian test">
+            <span>giây</span>
         </div>
 
         <div class="group">
@@ -199,6 +202,7 @@
         let totalTestLines = 0;
         let lastTestCount = 0;
         let maxDigits = 0;
+        let activeTestDuration = 0; // Lưu thời gian test hiện tại
         
         let speedInterval;
         let renderInterval;
@@ -211,6 +215,7 @@
         const stopBtn = document.getElementById('stopBtn');
         const testBtn = document.getElementById('testBtn');
         const delayInput = document.getElementById('delayInput');
+        const testTimeInput = document.getElementById('testTimeInput');
         const speedDisplay = document.getElementById('speedometer');
         const fpsMeter = document.getElementById('fpsMeter');
 
@@ -285,7 +290,8 @@
         function startWorker() {
             startBtn.disabled = true;
             stopBtn.disabled = false;
-            testBtn.disabled = true; // Tắt nút Test
+            testBtn.disabled = true; 
+            testTimeInput.disabled = true;
             delayInput.disabled = true;
             pauseBtn.disabled = false;
             logDiv.innerHTML = '<div class="status-msg">--- BẮT ĐẦU ---</div>'; 
@@ -308,15 +314,24 @@
             worker.postMessage({ command: 'start', delay: delayValue });
         }
 
-        // ====== CHỨC NĂNG TEST PERFORMANCE 10 GIÂY ======
+        // ====== CHỨC NĂNG TEST PERFORMANCE TÙY CHỈNH THỜI GIAN ======
         function runPerformanceTest() {
+            // Lấy số giây từ ô input (mặc định là 10 nếu nhập sai)
+            let requestedSeconds = parseInt(testTimeInput.value, 10);
+            if (isNaN(requestedSeconds) || requestedSeconds <= 0) {
+                requestedSeconds = 10;
+                testTimeInput.value = 10;
+            }
+            activeTestDuration = requestedSeconds;
+
             startBtn.disabled = true;
-            stopBtn.disabled = true; // Không cho stop giữa chừng
-            pauseBtn.disabled = true; // Không cho pause
+            stopBtn.disabled = true; 
+            pauseBtn.disabled = true; 
             testBtn.disabled = true;
+            testTimeInput.disabled = true; // Khóa ô nhập thời gian
             delayInput.disabled = true;
             
-            logDiv.innerHTML = '<div class="status-msg" style="color:#0ff">--- ĐANG CHẠY BÀI KIỂM TRA HIỆU NĂNG (10 GIÂY) ---</div>'; 
+            logDiv.innerHTML = `<div class="status-msg" style="color:#0ff">--- ĐANG CHẠY BÀI KIỂM TRA HIỆU NĂNG (${activeTestDuration} GIÂY) ---</div>`; 
             
             const blob = new Blob([document.getElementById('workerCode').textContent], { type: "text/javascript" });
             worker = new Worker(window.URL.createObjectURL(blob));
@@ -338,8 +353,8 @@
             // Force chạy max speed
             worker.postMessage({ command: 'start', delay: 'none' });
 
-            // Hẹn giờ 10 giây sẽ dừng
-            testTimerId = setTimeout(endPerformanceTest, 10000);
+            // Hẹn giờ kết thúc theo số giây đã nhập
+            testTimerId = setTimeout(endPerformanceTest, activeTestDuration * 1000);
         }
 
         function endPerformanceTest() {
@@ -350,15 +365,16 @@
             clearInterval(speedInterval);
             clearInterval(renderInterval);
             
-            // Tính toán kết quả
-            const avgLps = Math.round(totalTestLines / 10);
+            // Tính toán kết quả (tránh chia cho 0 mặc dù đã chặn nhập âm)
+            const durationToDivide = activeTestDuration > 0 ? activeTestDuration : 1;
+            const avgLps = Math.round(totalTestLines / durationToDivide);
 
             // Vẽ bảng điểm
             const scorecardDiv = document.createElement('div');
             scorecardDiv.className = "scorecard";
             scorecardDiv.innerHTML = `
                 <h3>🏆 Kết quả bài kiểm tra 🏆</h3>
-                <p>Thời gian chạy: <span class="highlight">10 giây</span></p>
+                <p>Thời gian chạy: <span class="highlight">${activeTestDuration} giây</span></p>
                 <p>Tổng số đã tính: <span class="highlight">${totalTestLines.toLocaleString()} dòng</span></p>
                 <p>Tốc độ trung bình: <span class="highlight">${avgLps.toLocaleString()} LPS</span></p>
                 <p>Số hạng Fibonacci cao nhất: <span class="highlight">U(${lastTestCount.toLocaleString()})</span></p>
@@ -378,6 +394,7 @@
             stopBtn.disabled = true;
             pauseBtn.disabled = true;
             testBtn.disabled = false;
+            testTimeInput.disabled = false; // Mở lại ô nhập thời gian
             delayInput.disabled = false; 
             speedDisplay.textContent = "0 lps";
         }
@@ -415,7 +432,8 @@
             stopBtn.disabled = true;
             pauseBtn.disabled = true;
             pauseBtn.textContent = "[ Pause ]";
-            testBtn.disabled = false; // Bật lại test
+            testBtn.disabled = false; 
+            testTimeInput.disabled = false; 
             delayInput.disabled = false; 
             speedDisplay.textContent = "0 lps";
             
