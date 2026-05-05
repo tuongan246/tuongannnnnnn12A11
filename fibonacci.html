@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fibonacci Terminal Pro Max</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        
+        #controls {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            background: #111;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            box-sizing: border-box;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 100;
+        }
+
+        .stats {
+            background: #002200;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid #0f0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .stat-item {
+            min-width: 70px;
+        }
+
+        .divider {
+            color: #0f0;
+            opacity: 0.5;
+        }
+
+        button, input {
+            background: #333;
+            color: #0f0;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        button:hover:not(:disabled) { background: #444; }
+        button { color: #fff; min-width: 80px; }
+        button:disabled { color: #555; cursor: not-allowed; background: #222; border-color: #333; }
+        input { width: 60px; text-align: center; }
+        input::placeholder { color: #005500; }
+
+        .group { display: flex; align-items: center; gap: 5px; }
+
+        /* Nút Test Performance style riêng */
+        #testBtn {
+            color: #0ff;
+            border-color: #0ff;
+            font-weight: bold;
+        }
+        #testBtn:hover:not(:disabled) {
+            background: #003333;
+        }
+
+        #log {
+            margin-top: 110px;
+            padding: 10px;
+            word-wrap: break-word;
+            padding-bottom: 30px;
+        }
+        
+        .status-msg { color: #aaa; font-style: italic; margin: 5px 0; }
+
+        /* Bảng điểm */
+        .scorecard {
+            border: 2px dashed #0ff;
+            padding: 15px;
+            background: #001111;
+            color: #0ff;
+            max-width: 450px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+        .scorecard h3 {
+            margin-top: 0;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #0ff;
+            padding-bottom: 10px;
+        }
+        .scorecard p { margin: 8px 0; font-size: 15px; }
+        .scorecard .highlight { color: #fff; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <div class="group">
+            <button id="startBtn" onclick="startWorker()">[ Run ]</button>
+            <button id="pauseBtn" onclick="togglePause()" disabled>[ Pause ]</button>
+            <button id="stopBtn" onclick="stopWorker()" disabled>[ Stop ]</button>
+        </div>
+        
+        <div class="group">
+            <button id="testBtn" onclick="runPerformanceTest()">[ Test Performance ]</button>
+        </div>
+
+        <div class="group">
+            <label>Delay:</label>
+            <input type="number" id="delayInput" min="0" step="50" placeholder="0">
+            <span>ms</span>
+        </div>
+
+        <div class="stats">
+            <span class="stat-item" id="speedometer">0 lps</span>
+            <span class="divider">|</span>
+            <span class="stat-item" id="fpsMeter">0 fps</span>
+        </div>
+    </div>
+    
+    <div id="log"></div>
+
+    <script id="workerCode" type="javascript/worker">
+        let u_prev = 0n;
+        let u_curr = 1n;
+        let count = 1;
+        let delay = 0;
+        let isPaused = false;
+        let timerId = null;
+        let isMaxSpeed = false;
+
+        function calculateNext() {
+            if (isPaused) return;
+            let u_next = u_prev + u_curr;
+            u_prev = u_curr;
+            u_curr = u_next;
+            count++;
+            self.postMessage({ command: 'data', count: count, value: u_curr.toString() });
+            timerId = setTimeout(calculateNext, delay);
+        }
+
+        function calculateMaxSpeed() {
+            if (isPaused) return;
+            for(let i = 0; i < 100; i++) {
+                let u_next = u_prev + u_curr;
+                u_prev = u_curr;
+                u_curr = u_next;
+                count++;
+                self.postMessage({ command: 'data', count: count, value: u_curr.toString() });
+            }
+            timerId = setTimeout(calculateMaxSpeed, 0);
+        }
+
+        self.onmessage = function(e) {
+            const cmd = e.data.command;
+            if (cmd === 'start') {
+                isPaused = false;
+                if (e.data.delay === 'none') {
+                    isMaxSpeed = true;
+                    calculateMaxSpeed();
+                } else {
+                    isMaxSpeed = false;
+                    delay = e.data.delay;
+                    calculateNext();
+                }
+            } else if (cmd === 'pause') {
+                isPaused = true;
+                clearTimeout(timerId);
+            } else if (cmd === 'resume') {
+                isPaused = false;
+                if (isMaxSpeed) calculateMaxSpeed();
+                else calculateNext();
+            }
+        };
+    </script>
+
+    <script>
+        let worker;
+        let lineCount = 0;
+        let totalTestLines = 0;
+        let lastTestCount = 0;
+        let maxDigits = 0;
+        
+        let speedInterval;
+        let renderInterval;
+        let testTimerId;
+        let messageBuffer = []; 
+
+        const logDiv = document.getElementById('log');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const testBtn = document.getElementById('testBtn');
+        const delayInput = document.getElementById('delayInput');
+        const speedDisplay = document.getElementById('speedometer');
+        const fpsMeter = document.getElementById('fpsMeter');
+
+        // === ĐO FPS ===
+        let frameCount = 0;
+        let lastTime = performance.now();
+        function updateFPS() {
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                fpsMeter.textContent = `${frameCount} fps`;
+                fpsMeter.style.color = (frameCount < 30) ? "#ff3333" : "#0f0"; 
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            requestAnimationFrame(updateFPS);
+        }
+        requestAnimationFrame(updateFPS);
+
+        function adjustLogMargin() {
+            const controlsHeight = document.getElementById('controls').offsetHeight;
+            logDiv.style.marginTop = (controlsHeight + 15) + 'px';
+        }
+        window.addEventListener('resize', adjustLogMargin);
+        adjustLogMargin();
+
+        // Khởi tạo luồng xử lý tin nhắn từ Worker
+        function setupWorkerMessageHandling(isTestMode = false) {
+            worker.onmessage = function(e) {
+                if (e.data.command === 'data') {
+                    lineCount++;
+                    
+                    // Nếu đang test, lưu trữ thêm dữ liệu
+                    if (isTestMode) {
+                        totalTestLines++;
+                        lastTestCount = e.data.count;
+                        maxDigits = e.data.value.length;
+                    }
+
+                    if (messageBuffer.length < 500) {
+                        messageBuffer.push(e.data);
+                    } else {
+                        messageBuffer[499] = e.data;
+                    }
+                }
+            };
+        }
+
+        // Khởi tạo vòng lặp vẽ giao diện (Render)
+        function startRenderLoop() {
+            renderInterval = setInterval(() => {
+                if (messageBuffer.length > 0) {
+                    const itemsToRender = messageBuffer.slice(-40);
+                    messageBuffer = []; 
+                    const fragment = document.createDocumentFragment();
+                    itemsToRender.forEach(data => {
+                        const row = document.createElement('div');
+                        row.textContent = `U(${data.count}) = ${data.value}`;
+                        fragment.appendChild(row);
+                    });
+                    logDiv.appendChild(fragment);
+
+                    while (logDiv.children.length > 150) {
+                        logDiv.removeChild(logDiv.firstChild);
+                    }
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+            }, 40);
+        }
+
+        // ====== CHỨC NĂNG CHẠY BÌNH THƯỜNG ======
+        function startWorker() {
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            testBtn.disabled = true; // Tắt nút Test
+            delayInput.disabled = true;
+            pauseBtn.disabled = false;
+            logDiv.innerHTML = '<div class="status-msg">--- BẮT ĐẦU ---</div>'; 
+
+            const delayValue = delayInput.value === "" ? 'none' : (parseInt(delayInput.value, 10) || 0);
+            
+            const blob = new Blob([document.getElementById('workerCode').textContent], { type: "text/javascript" });
+            worker = new Worker(window.URL.createObjectURL(blob));
+
+            lineCount = 0;
+            messageBuffer = [];
+
+            speedInterval = setInterval(() => {
+                speedDisplay.textContent = `${lineCount} lps`;
+                lineCount = 0; 
+            }, 1000);
+
+            setupWorkerMessageHandling(false);
+            startRenderLoop();
+            worker.postMessage({ command: 'start', delay: delayValue });
+        }
+
+        // ====== CHỨC NĂNG TEST PERFORMANCE 10 GIÂY ======
+        function runPerformanceTest() {
+            startBtn.disabled = true;
+            stopBtn.disabled = true; // Không cho stop giữa chừng
+            pauseBtn.disabled = true; // Không cho pause
+            testBtn.disabled = true;
+            delayInput.disabled = true;
+            
+            logDiv.innerHTML = '<div class="status-msg" style="color:#0ff">--- ĐANG CHẠY BÀI KIỂM TRA HIỆU NĂNG (10 GIÂY) ---</div>'; 
+            
+            const blob = new Blob([document.getElementById('workerCode').textContent], { type: "text/javascript" });
+            worker = new Worker(window.URL.createObjectURL(blob));
+
+            lineCount = 0;
+            totalTestLines = 0;
+            lastTestCount = 0;
+            maxDigits = 0;
+            messageBuffer = [];
+
+            speedInterval = setInterval(() => {
+                speedDisplay.textContent = `${lineCount} lps`;
+                lineCount = 0; 
+            }, 1000);
+
+            setupWorkerMessageHandling(true);
+            startRenderLoop();
+            
+            // Force chạy max speed
+            worker.postMessage({ command: 'start', delay: 'none' });
+
+            // Hẹn giờ 10 giây sẽ dừng
+            testTimerId = setTimeout(endPerformanceTest, 10000);
+        }
+
+        function endPerformanceTest() {
+            if (worker) {
+                worker.terminate();
+                worker = undefined;
+            }
+            clearInterval(speedInterval);
+            clearInterval(renderInterval);
+            
+            // Tính toán kết quả
+            const avgLps = Math.round(totalTestLines / 10);
+
+            // Vẽ bảng điểm
+            const scorecardDiv = document.createElement('div');
+            scorecardDiv.className = "scorecard";
+            scorecardDiv.innerHTML = `
+                <h3>🏆 Kết quả bài kiểm tra 🏆</h3>
+                <p>Thời gian chạy: <span class="highlight">10 giây</span></p>
+                <p>Tổng số đã tính: <span class="highlight">${totalTestLines.toLocaleString()} dòng</span></p>
+                <p>Tốc độ trung bình: <span class="highlight">${avgLps.toLocaleString()} LPS</span></p>
+                <p>Số hạng Fibonacci cao nhất: <span class="highlight">U(${lastTestCount.toLocaleString()})</span></p>
+                <p>Độ dài con số khổng lồ nhất: <span class="highlight">${maxDigits.toLocaleString()} chữ số</span></p>
+            `;
+            logDiv.appendChild(scorecardDiv);
+            
+            const endMsg = document.createElement('div');
+            endMsg.className = "status-msg";
+            endMsg.textContent = "--- HOÀN TẤT KIỂM TRA ---";
+            logDiv.appendChild(endMsg);
+            
+            window.scrollTo(0, document.body.scrollHeight);
+
+            // Mở khóa UI
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            pauseBtn.disabled = true;
+            testBtn.disabled = false;
+            delayInput.disabled = false; 
+            speedDisplay.textContent = "0 lps";
+        }
+
+        // ====== CHỨC NĂNG PAUSE / STOP ======
+        function togglePause() {
+            if (pauseBtn.textContent === "[ Pause ]") {
+                worker.postMessage({ command: 'pause' });
+                pauseBtn.textContent = "[ Resume ]";
+                clearInterval(speedInterval);
+                speedDisplay.textContent = "PAUSED";
+                const row = document.createElement('div');
+                row.className = "status-msg";
+                row.textContent = "--- ĐÃ TẠM DỪNG ---";
+                logDiv.appendChild(row);
+            } else {
+                worker.postMessage({ command: 'resume' });
+                pauseBtn.textContent = "[ Pause ]";
+                speedInterval = setInterval(() => {
+                    speedDisplay.textContent = `${lineCount} lps`;
+                    lineCount = 0;
+                }, 1000);
+            }
+        }
+
+        function stopWorker() {
+            if (worker) {
+                worker.terminate();
+                worker = undefined;
+            }
+            clearInterval(speedInterval);
+            clearInterval(renderInterval);
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = "[ Pause ]";
+            testBtn.disabled = false; // Bật lại test
+            delayInput.disabled = false; 
+            speedDisplay.textContent = "0 lps";
+            
+            const row = document.createElement('div');
+            row.style.color = "#ff3333"; 
+            row.className = "status-msg";
+            row.textContent = "--- KẾT THÚC ---";
+            logDiv.appendChild(row);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    </script>
+
+</body>
+</html>
