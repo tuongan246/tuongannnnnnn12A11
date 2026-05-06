@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Background gradient động sang trọng */
+            background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #1a2a6c);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #fff;
+            padding: 20px;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .menu-container {
+            /* Hiệu ứng Glassmorphism */
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.3);
+            /* Hiệu ứng xuất hiện */
+            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transform: translateY(40px);
+            opacity: 0;
+        }
+
+        @keyframes slideUpFade {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .menu-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .menu-header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            /* Chữ có gradient bắt mắt */
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .menu-header p {
+            font-size: 0.9rem;
+            color: #a0a5b1;
+            font-weight: 300;
+        }
+
+        /* Nút link cơ bản */
+        .link-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            text-decoration: none;
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Hiệu ứng quét sáng (shine) khi hover */
+        .link-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.6s ease;
+        }
+
+        .link-card:hover::before {
+            left: 150%;
+        }
+
+        .link-card:hover {
+            transform: translateY(-4px) scale(1.01);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 198, 255, 0.4);
+            box-shadow: 0 12px 24px rgba(0, 198, 255, 0.15);
+            color: #fff;
+        }
+
+        .link-title {
+            font-size: 1.1rem;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Biểu tượng mũi tên */
+        .arrow-icon {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+
+        .link-card:hover .arrow-icon {
+            transform: translateX(6px);
+            color: #00c6ff;
+        }
+
+        /* Style riêng cho nhóm Fibonacci */
+        .fibonacci-group {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .fibonacci-group:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .group-title {
+            font-size: 1rem;
+            color: #a0a5b1;
+            margin-bottom: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .group-title::after {
+            content: '';
+            flex-grow: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .sub-btn {
+            flex: 1;
+            text-align: center;
+            padding: 14px 10px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 0.95rem;
+            background: rgba(0, 198, 255, 0.05);
+            border: 1px solid rgba(0, 198, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sub-btn:hover {
+            background: rgba(0, 198, 255, 0.2);
+            border-color: #00c6ff;
+            box-shadow: 0 8px 16px rgba(0, 198, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Độ trễ xuất hiện cho từng phần tử */
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+    </style>
+</head>
+<body>
+
+    <div class="menu-container">
+        <div class="menu-header">
+            <h1>Workspace</h1>
+            <p>Select a project to explore</p>
+        </div>
+
+        <a href="chaosmachine.html" class="link-card delay-1">
+            <span class="link-title">Chaos Machine</span>
+            <svg class="arrow-icon" viewBox="0 0 24 24">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </a>
+
+        <a href="collatz.html" class="link-card delay-2">
+            <span class="link-title">Collatz Sequence</span>
+            <svg class="arrow-icon" viewBox="0 0 24 24">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </a>
+
+        <div class="fibonacci-group delay-3">
+            <div class="group-title">Fibonacci Projects</div>
+            <div class="button-row">
+                <a href="fibonacci.html" class="sub-btn">Version 1</a>
+                <a href="fibonaccioriginal.html" class="sub-btn">Original</a>
+            </div>
+        </div>
+
+        <a href="index.html" class="link-card delay-4">
+            <span class="link-title">Main Index</span>
+            <svg class="arrow-icon" viewBox="0 0 24 24">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </a>
+    </div>
+
+</body>
+</html>
