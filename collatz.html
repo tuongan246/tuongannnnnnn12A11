@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collatz, Pi & e Terminal Lite</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        
+        #controls {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            background: #111;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            box-sizing: border-box;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 100;
+        }
+
+        .stats {
+            background: #002200;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid #0f0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            min-width: 70px;
+        }
+
+        button, input {
+            background: #333;
+            color: #0f0;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 4px;
+            transition: 0.2s;
+            box-sizing: border-box;
+        }
+
+        button:hover:not(:disabled) { background: #444; }
+        button { color: #fff; min-width: 80px; font-weight: bold; }
+        button:disabled { color: #555; cursor: not-allowed; background: #222; border-color: #333; }
+        
+        input { text-align: center; }
+        input:disabled { color: #555; background: #222; border-color: #333; cursor: not-allowed; }
+        
+        #startNumberInput { width: 100%; max-width: 320px; text-align: left; }
+        #delayInput { width: 60px; }
+
+        .group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        #log {
+            margin-top: 120px; 
+            padding: 10px;
+            padding-bottom: 30px;
+        }
+        
+        .status-msg { color: #aaa; font-style: italic; margin: 5px 0; }
+        .pause-msg { color: #ff9800; }
+        .finish-msg { color: #0f0; font-weight: bold; margin: 10px 0; border-top: 1px dashed #0f0; padding-top: 10px; }
+        
+        .pi-row { 
+            color: #ffeb3b; 
+            font-size: 16px;
+            line-height: 1.6;
+            word-break: break-all; 
+            letter-spacing: 1px;
+        }
+
+        .collatz-row {
+            margin-bottom: 8px;
+            word-break: break-all; 
+            line-height: 1.4;
+        }
+
+        /* --- CSS CHO BẢNG BIỂU ĐỒ --- */
+        #chartModal {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 10, 10, 0.95);
+            border: 2px solid #0f0;
+            padding: 20px;
+            z-index: 1000;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        #chartModal h3 {
+            margin-top: 0;
+            text-align: center;
+            border-bottom: 1px dashed #0f0;
+            padding-bottom: 10px;
+            color: #fff;
+        }
+
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            height: 250px;
+            gap: 10px;
+            margin-top: 20px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+
+        .bar-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+        }
+
+        .bar {
+            width: 100%;
+            background: #008800;
+            transition: height 0.3s ease-out, background 0.3s, box-shadow 0.3s;
+            min-height: 1px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .bar-label {
+            margin-top: 5px;
+            font-weight: bold;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .bar-value {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #ffeb3b;
+            transition: color 0.3s;
+            font-weight: bold;
+        }
+
+        #closeChartBtn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            min-width: 40px;
+            background: #440000;
+            border-color: #ff3333;
+            color: #ff3333;
+        }
+        #closeChartBtn:hover { background: #ff3333; color: #fff; }
+
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <div class="group">
+            <input type="text" id="startNumberInput" placeholder="VD: 27, 2^100, pi hoặc e" value="e" title="Hỗ trợ số Collatz hoặc gõ 'pi', 'e'">
+            <button id="startBtn" onclick="startWorker()">[ Run ]</button>
+            <button id="pauseBtn" onclick="togglePause()" disabled>[ Pause ]</button>
+            <button id="stopBtn" onclick="stopWorker()" disabled>[ Stop ]</button>
+            <button id="chartBtn" onclick="toggleChart()">[ Biểu Đồ ]</button>
+        </div>
+        
+        <div class="group">
+            <label>Delay:</label>
+            <input type="number" id="delayInput" min="0" step="50" value="" placeholder="Mượt">
+            <span>ms</span>
+        </div>
+
+        <div class="stats">
+            <span class="stat-item" id="speedometer">0 lps</span>
+            <span class="divider">|</span>
+            <span class="stat-item" id="fpsMeter">0 fps</span>
+            <span class="divider" id="totalDivider" style="display:none;">|</span>
+            <span class="stat-item" id="totalDigitsDisplay" style="display:none;">0 digits</span>
+        </div>
+    </div>
+    
+    <div id="chartModal">
+        <button id="closeChartBtn" onclick="toggleChart()">X</button>
+        <h3 id="chartTitle">Tần suất các chữ số</h3>
+        <div class="chart-container" id="chartBars">
+        </div>
+    </div>
+
+    <div id="log"></div>
+
+    <script id="workerCode" type="javascript/worker">
+        let mode = 'collatz'; 
+        let currentNumber = 0n;
+        let count = 0;
+        let delay = 0;
+        let timerId = null;
+        let isPaused = false;
+        let digitCount = 0;
+
+        let q = 1n, r = 0n, t = 1n, k = 1n, n = 3n, l = 3n;
+        let eq = 1n, er = 0n, es = 0n, et = 1n, ei = 0n;
+
+        function stepCollatz() {
+            if (currentNumber % 2n === 0n) currentNumber = currentNumber / 2n;
+            else currentNumber = currentNumber * 3n + 1n;
+            count++;
+        }
+
+        function stepPi() {
+            while (true) {
+                if (4n * q + r - t < n * t) {
+                    let digit = n;
+                    let nr = 10n * (r - n * t);
+                    n = ((10n * (3n * q + r)) / t) - 10n * n;
+                    q *= 10n; r = nr;
+                    return digit;
+                } else {
+                    let nr = (2n * q + r) * l;
+                    let nn = (q * (7n * k + 2n) + r * l) / (t * l);
+                    q *= k; t *= l; l += 2n; k += 1n;
+                    n = nn; r = nr;
+                }
+            }
+        }
+
+        function stepE() {
+            while (true) {
+                let d1 = (es === 0n) ? -1n : eq / es;
+                let denom2 = es + et;
+                let d2 = (denom2 === 0n) ? -1n : (eq + er) / denom2;
+
+                if (es !== 0n && denom2 !== 0n && d1 === d2) {
+                    let d = d1;
+                    let nq = 10n * eq - 10n * d * es;
+                    let nr = 10n * er - 10n * d * et;
+                    eq = nq; er = nr;
+                    return d;
+                } else {
+                    let a;
+                    if (ei === 0n) a = 2n;
+                    else if (ei % 3n === 2n) a = 2n * (ei / 3n + 1n);
+                    else a = 1n;
+                    
+                    let nq = eq * a + er;
+                    let nr = eq;
+                    let ns = es * a + et;
+                    let nt = es;
+                    
+                    eq = nq; er = nr; es = ns; et = nt;
+                    ei++;
+                }
+            }
+        }
+
+        function calculate() {
+            if (isPaused) return;
+
+            let batchSize = (delay <= 0) ? 30 : 1; 
+            
+            let collatzBatch = [];
+            let stringChunk = "";
+            let addedDigits = 0;
+
+            for (let i = 0; i < batchSize; i++) {
+                if (mode === 'collatz') {
+                    stepCollatz();
+                    collatzBatch.push({ count: count, value: currentNumber.toString() });
+                    if (currentNumber === 1n) {
+                        self.postMessage({ command: 'batchData', type: 'collatz', items: collatzBatch });
+                        self.postMessage({ command: 'done' });
+                        return;
+                    }
+                } else if (mode === 'pi' || mode === 'e') {
+                    let digit = (mode === 'pi') ? stepPi() : stepE();
+                    digitCount++;
+                    addedDigits++;
+                    
+                    if (digitCount === 1) {
+                        stringChunk += digit.toString();
+                    } else if (digitCount === 2) {
+                        stringChunk += "," + digit.toString();
+                    } else {
+                        stringChunk += digit.toString();
+                    }
+                }
+            }
+
+            if (mode === 'collatz') {
+                self.postMessage({ command: 'batchData', type: 'collatz', items: collatzBatch });
+            } else {
+                self.postMessage({ command: 'batchData', type: mode, stringPart: stringChunk, newDigits: addedDigits });
+            }
+            
+            timerId = setTimeout(calculate, delay);
+        }
+
+        self.onmessage = function(e) {
+            const cmd = e.data.command;
+            
+            if (cmd === 'start') {
+                isPaused = false;
+                count = 0;
+                delay = (e.data.delay === "" || isNaN(e.data.delay)) ? 0 : parseInt(e.data.delay, 10);
+                
+                if (e.data.startNumber === 'pi') {
+                    mode = 'pi';
+                    q = 1n; r = 0n; t = 1n; k = 1n; n = 3n; l = 3n;
+                    digitCount = 0;
+                } else if (e.data.startNumber === 'e') {
+                    mode = 'e';
+                    eq = 1n; er = 0n; es = 0n; et = 1n; ei = 0n;
+                    digitCount = 0;
+                } else {
+                    mode = 'collatz';
+                    currentNumber = BigInt(e.data.startNumber);
+                }
+                calculate();
+            } else if (cmd === 'pause') {
+                isPaused = true;
+                clearTimeout(timerId);
+            } else if (cmd === 'resume') {
+                isPaused = false;
+                calculate();
+            }
+        };
+    </script>
+
+    <script>
+        let worker;
+        let lineCount = 0;
+        let speedInterval;
+        let animationFrameId; 
+        let messageBuffer = []; 
+        let currentAppMode = 'collatz';
+        
+        let currentConstantRow = null; 
+        let constantFirstPart = ""; 
+        let constantLastPart = "";  
+
+        let digitCounts = new Array(10).fill(0);
+        let totalConstantDigits = 0;
+        let isChartVisible = false;
+
+        const logDiv = document.getElementById('log');
+        const startNumberInput = document.getElementById('startNumberInput');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const delayInput = document.getElementById('delayInput');
+        const speedDisplay = document.getElementById('speedometer');
+        const fpsMeter = document.getElementById('fpsMeter');
+        const totalDigitsDisplay = document.getElementById('totalDigitsDisplay');
+        const totalDivider = document.getElementById('totalDivider');
+        const chartBarsContainer = document.getElementById('chartBars');
+        const chartModal = document.getElementById('chartModal');
+        const chartTitle = document.getElementById('chartTitle');
+
+        for(let i = 0; i < 10; i++) {
+            chartBarsContainer.innerHTML += `
+                <div class="bar-wrapper">
+                    <span class="bar-value" id="val-${i}">0</span>
+                    <div class="bar" id="bar-${i}" style="height: 1%;"></div>
+                    <span class="bar-label">${i}</span>
+                </div>
+            `;
+        }
+
+        let frameCount = 0;
+        let lastTime = performance.now();
+        function updateFPS() {
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                fpsMeter.textContent = `${frameCount} fps`;
+                fpsMeter.style.color = (frameCount < 30) ? "#ff3333" : "#0f0"; 
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            requestAnimationFrame(updateFPS);
+        }
+        requestAnimationFrame(updateFPS);
+
+        function adjustLogMargin() {
+            const controlsHeight = document.getElementById('controls').offsetHeight;
+            logDiv.style.marginTop = (controlsHeight + 15) + 'px';
+        }
+        window.addEventListener('resize', adjustLogMargin);
+        window.addEventListener('load', adjustLogMargin);
+
+        function parseInput(val) {
+            val = val.replace(/\s+/g, '').toLowerCase(); 
+            if (val === 'pi' || val === 'π') return 'pi';
+            if (val === 'e') return 'e';
+            if (val.includes('^')) {
+                const parts = val.split('^');
+                if (parts.length === 2) {
+                    const base = BigInt(parts[0]);
+                    const exp = BigInt(parts[1]);
+                    if (exp < 0n) throw new Error("Số mũ không được âm.");
+                    return (base ** exp).toString();
+                } else {
+                    throw new Error("Định dạng mũ không hợp lệ.");
+                }
+            } else {
+                return BigInt(val).toString();
+            }
+        }
+
+        function updateChartUI() {
+            let activeCounts = digitCounts.filter(c => c > 0);
+            let maxCount = Math.max(...digitCounts);
+            let minCount = activeCounts.length > 0 ? Math.min(...activeCounts) : 0;
+            
+            if (maxCount === 0) maxCount = 1; 
+            
+            for(let i = 0; i < 10; i++) {
+                const bar = document.getElementById(`bar-${i}`);
+                const val = document.getElementById(`val-${i}`);
+                const count = digitCounts[i];
+                
+                val.textContent = count;
+                
+                let percent = 1; 
+                
+                if (count > 0) {
+                    if (maxCount === minCount) {
+                        percent = 100;
+                    } else {
+                        percent = 15 + ((count - minCount) / (maxCount - minCount)) * 85;
+                    }
+                }
+                
+                bar.style.height = `${Math.max(1, percent)}%`;
+
+                if (count === maxCount && count > 0) {
+                    bar.style.background = "#0f0";
+                    bar.style.boxShadow = "0 0 10px #0f0";
+                    val.style.color = "#0f0";
+                } else if (count === minCount && count > 0) {
+                    bar.style.background = "#ff3333";
+                    bar.style.boxShadow = "0 0 5px #ff3333";
+                    val.style.color = "#ff3333";
+                } else {
+                    bar.style.background = "#006600";
+                    bar.style.boxShadow = "none";
+                    val.style.color = "#ffeb3b"; 
+                }
+            }
+        }
+
+        function toggleChart() {
+            if (currentAppMode !== 'pi' && currentAppMode !== 'e') {
+                alert("Biểu đồ này chỉ dành cho chế độ tính hằng số (Pi hoặc e)!");
+                return;
+            }
+
+            if (chartModal.style.display === 'block') {
+                chartModal.style.display = 'none';
+                isChartVisible = false;
+            } else {
+                chartModal.style.display = 'block';
+                isChartVisible = true;
+                updateChartUI();
+            }
+        }
+
+        function renderLoop() {
+            if (messageBuffer.length > 0) {
+                const fragment = document.createDocumentFragment();
+                const items = messageBuffer.splice(0, messageBuffer.length);
+                
+                let constantUpdated = false;
+                let lastConstantType = '';
+
+                items.forEach(data => {
+                    if (data.isConstantChunk) {
+                        if (constantFirstPart.length < 4) {
+                            let needed = 4 - constantFirstPart.length;
+                            constantFirstPart += data.value.substring(0, needed);
+                            constantLastPart += data.value.substring(needed);
+                        } else {
+                            constantLastPart += data.value;
+                        }
+                        constantUpdated = true;
+                        lastConstantType = data.constantType;
+                    } else {
+                        const row = document.createElement('div');
+                        row.className = "collatz-row";
+                        row.textContent = `Bước ${data.count}: ${data.value}`;
+                        fragment.appendChild(row);
+                    }
+                });
+
+                if (constantUpdated) {
+                    if (!currentConstantRow) {
+                        currentConstantRow = document.createElement('div');
+                        currentConstantRow.className = "pi-row";
+                        logDiv.appendChild(currentConstantRow);
+                    }
+                    
+                    // Cắt bớt nếu phần đuôi vượt quá 9996 ký tự
+                    if (constantLastPart.length > 9996) {
+                        constantLastPart = constantLastPart.slice(-9996);
+                    }
+                    
+                    let displayString = "";
+                    // Dùng totalConstantDigits để quyết định việc hiển thị dấu ...
+                    if (totalConstantDigits > 10000) {
+                        displayString = constantFirstPart + "..." + constantLastPart;
+                    } else {
+                        displayString = constantFirstPart + constantLastPart;
+                    }
+                    
+                    currentConstantRow.textContent = (lastConstantType === 'pi' ? "Pi ≈ " : "e ≈ ") + displayString;
+                }
+
+                if (fragment.childNodes.length > 0) logDiv.appendChild(fragment);
+                
+                const pauseMsg = document.querySelector('.pause-msg');
+                if (pauseMsg) {
+                    logDiv.appendChild(pauseMsg); 
+                }
+                
+                if (currentAppMode !== 'pi' && currentAppMode !== 'e') {
+                    while (logDiv.children.length > 100) {
+                        if (logDiv.firstChild === pauseMsg) {
+                            if (logDiv.children.length > 1) {
+                                logDiv.removeChild(logDiv.children[1]);
+                            } else {
+                                break;
+                            }
+                        } else {
+                            logDiv.removeChild(logDiv.firstChild);
+                        }
+                    }
+                }
+                
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function startWorker() {
+            const rawInput = startNumberInput.value.trim();
+            let parsedStartNum = "0";
+
+            try {
+                parsedStartNum = parseInput(rawInput);
+                if (parsedStartNum !== 'pi' && parsedStartNum !== 'e' && BigInt(parsedStartNum) <= 0n) {
+                    alert("Số phải lớn hơn 0!");
+                    return;
+                }
+            } catch (error) {
+                alert("Đầu vào không hợp lệ! Hãy nhập số nguyên, định dạng cơ_số^mũ, 'pi' hoặc 'e'.");
+                return;
+            }
+
+            currentAppMode = (parsedStartNum === 'pi') ? 'pi' : (parsedStartNum === 'e' ? 'e' : 'collatz');
+            
+            currentConstantRow = null;
+            constantFirstPart = "";
+            constantLastPart = "";
+
+            if (currentAppMode === 'pi' || currentAppMode === 'e') {
+                digitCounts.fill(0);
+                totalConstantDigits = 0;
+                totalDigitsDisplay.style.display = "inline";
+                totalDivider.style.display = "inline";
+                totalDigitsDisplay.textContent = "0 digits";
+                chartTitle.textContent = `Tần suất các chữ số ${currentAppMode === 'pi' ? 'Pi' : 'e'}`;
+                if (isChartVisible) updateChartUI();
+            } else {
+                totalDigitsDisplay.style.display = "none";
+                totalDivider.style.display = "none";
+                if (isChartVisible) toggleChart(); 
+            }
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            pauseBtn.disabled = false;
+            pauseBtn.textContent = "[ Pause ]";
+            startNumberInput.disabled = true;
+            delayInput.disabled = true;
+            
+            logDiv.innerHTML = '';
+            
+            let startMsg = `--- ĐANG TÍNH TOÁN ---`;
+            if (currentAppMode === 'pi') startMsg = `--- TÍNH PI: CHẾ ĐỘ MƯỢT + NHANH ---`;
+            else if (currentAppMode === 'e') startMsg = `--- TÍNH SỐ E: CHẾ ĐỘ MƯỢT + NHANH ---`;
+            else if (rawInput.includes('^')) startMsg = `--- ĐANG TÍNH TOÁN CHO: ${rawInput} ---`;
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = "status-msg";
+            msgDiv.textContent = startMsg;
+            logDiv.appendChild(msgDiv);
+
+            const blob = new Blob([document.getElementById('workerCode').textContent], { type: "text/javascript" });
+            worker = new Worker(window.URL.createObjectURL(blob));
+
+            lineCount = 0;
+            messageBuffer = [];
+
+            speedInterval = setInterval(() => {
+                speedDisplay.textContent = `${lineCount} lps`;
+                lineCount = 0; 
+                if (currentAppMode === 'pi' || currentAppMode === 'e') {
+                    totalDigitsDisplay.textContent = `Total: ${totalConstantDigits} digits`;
+                }
+            }, 1000);
+
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(renderLoop);
+
+            worker.onmessage = function(e) {
+                if (e.data.command === 'batchData') {
+                    if (e.data.type === 'collatz') {
+                        lineCount += e.data.items.length;
+                        messageBuffer.push(...e.data.items);
+                    } else if (e.data.type === 'pi' || e.data.type === 'e') {
+                        lineCount += e.data.newDigits;
+                        totalConstantDigits += e.data.newDigits;
+                        messageBuffer.push({ isConstantChunk: true, constantType: e.data.type, value: e.data.stringPart });
+
+                        for(let i = 0; i < e.data.stringPart.length; i++) {
+                            let char = e.data.stringPart[i];
+                            if (char >= '0' && char <= '9') digitCounts[parseInt(char)]++;
+                        }
+
+                        if (isChartVisible) requestAnimationFrame(updateChartUI);
+                    }
+                } else if (e.data.command === 'done') {
+                    stopWorker(true);
+                }
+            };
+
+            const rawDly = delayInput.value;
+            worker.postMessage({ command: 'start', startNumber: parsedStartNum, delay: rawDly });
+            
+            setTimeout(adjustLogMargin, 100);
+        }
+
+        function togglePause() {
+            if (pauseBtn.textContent === "[ Pause ]") {
+                worker.postMessage({ command: 'pause' });
+                pauseBtn.textContent = "[ Resume ]";
+                clearInterval(speedInterval);
+                speedDisplay.textContent = "PAUSED";
+                
+                const row = document.createElement('div');
+                row.className = "status-msg pause-msg";
+                row.textContent = "--- ĐÃ TẠM DỪNG ---";
+                logDiv.appendChild(row);
+            } else {
+                worker.postMessage({ command: 'resume' });
+                pauseBtn.textContent = "[ Pause ]";
+                
+                document.querySelectorAll('.pause-msg').forEach(el => el.remove());
+
+                speedInterval = setInterval(() => {
+                    speedDisplay.textContent = `${lineCount} lps`;
+                    lineCount = 0;
+                    if (currentAppMode === 'pi' || currentAppMode === 'e') {
+                        totalDigitsDisplay.textContent = `Total: ${totalConstantDigits} digits`;
+                    }
+                }, 1000);
+            }
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function stopWorker(isAutoStop = false) {
+            if (worker) {
+                worker.terminate();
+                worker = undefined;
+            }
+            clearInterval(speedInterval);
+            cancelAnimationFrame(animationFrameId);
+
+            document.querySelectorAll('.pause-msg').forEach(el => el.remove());
+
+            if (messageBuffer.length > 0) {
+                const fragment = document.createDocumentFragment();
+                let constantUpdated = false;
+                let lastConstantType = '';
+
+                messageBuffer.forEach(data => {
+                    if (data.isConstantChunk) {
+                        if (constantFirstPart.length < 4) {
+                            let needed = 4 - constantFirstPart.length;
+                            constantFirstPart += data.value.substring(0, needed);
+                            constantLastPart += data.value.substring(needed);
+                        } else {
+                            constantLastPart += data.value;
+                        }
+                        constantUpdated = true;
+                        lastConstantType = data.constantType;
+                    } else {
+                        const row = document.createElement('div');
+                        row.className = "collatz-row";
+                        row.textContent = `Bước ${data.count}: ${data.value}`;
+                        fragment.appendChild(row);
+                    }
+                });
+
+                if (constantUpdated) {
+                    if (!currentConstantRow) {
+                        currentConstantRow = document.createElement('div');
+                        currentConstantRow.className = "pi-row";
+                        logDiv.appendChild(currentConstantRow);
+                    }
+                    
+                    if (constantLastPart.length > 9996) {
+                        constantLastPart = constantLastPart.slice(-9996);
+                    }
+                    
+                    let displayString = "";
+                    if (totalConstantDigits > 10000) {
+                        displayString = constantFirstPart + "..." + constantLastPart;
+                    } else {
+                        displayString = constantFirstPart + constantLastPart;
+                    }
+                    currentConstantRow.textContent = (lastConstantType === 'pi' ? "Pi ≈ " : "e ≈ ") + displayString;
+                }
+
+                if (fragment.childNodes.length > 0) logDiv.appendChild(fragment);
+                messageBuffer = [];
+            }
+
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = "[ Pause ]";
+            startNumberInput.disabled = false;
+            delayInput.disabled = false;
+            speedDisplay.textContent = "0 lps";
+            
+            const row = document.createElement('div');
+            if (isAutoStop) {
+                row.style.color = "#0f0"; 
+                row.className = "finish-msg";
+                row.textContent = "--- HOÀN TẤT ---";
+            } else {
+                row.style.color = "#ff3333"; 
+                row.className = "status-msg";
+                row.textContent = "--- ĐÃ DỪNG CHƯƠNG TRÌNH ---";
+            }
+            logDiv.appendChild(row);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+        
+        adjustLogMargin();
+    </script>
+
+</body>
+</html>
